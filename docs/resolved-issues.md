@@ -18,6 +18,12 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-07-31] PDF/XLSX exportés introuvables au téléchargement (« Fichier introuvable dans le stockage »)
+- **Symptôme** : dans « Mes Documents », certains documents (métadonnées visibles, taille/date OK) renvoient `Erreur à l'ouverture: Exception: Serveur: Fichier introuvable dans le stockage.` au clic/téléchargement (`ExportedDocumentsController.Download` → `FileNotFoundException` catché, `404`).
+- **Cause** : `LocalFileObjectStorage` (`backend/src/NovadisApi/Services/Storage/LocalFileObjectStorage.cs`) écrit les binaires sur le filesystem du conteneur, sous `./export-storage` relatif à `ContentRootPath` (donc `/app/export-storage`). `docker-compose.yml` ne montait ce dossier dans **aucun volume** (seuls `./logs` et `./uploads` l'étaient) — contrairement à `postgres_data` (nommé, persistant). À chaque recréation du conteneur `api` (redeploy), `/app/export-storage` repart vide alors que les lignes `ExportedDocuments` en base (persistée, elle) survivent. Tout document uploadé **avant** le dernier redeploy devient irrécupérable ; ceux créés après refonctionnent normalement — ce qui explique le pattern observé (CRI récents de Xavier OK, CRI plus anciens de Rémy/Guillaume en erreur).
+- **Correctif** : ajout du volume `./export-storage:/app/export-storage` dans `docker-compose.yml` (service `api`). Nécessite un redeploy (`docker compose up -d --force-recreate api`) sur le serveur pour prendre effet. **Les fichiers déjà perdus ne sont pas récupérables** — seuls les futurs exports seront persistés.
+- **Prévention** : tout répertoire écrit par un service de stockage local (`IObjectStorageService`) et destiné à survivre aux redeploys **doit** être monté en volume Docker au même titre que la DB — vérifier systématiquement `docker-compose.yml` lors de l'ajout d'un nouveau chemin d'écriture disque côté backend.
+
 ## [2026-07-31] Caractères manquants/mal rendus dans les PDF (œ, —, accents étendus) + suppression du champ « priorité » CRI
 - **Symptôme** : dans les PDF générés (`pdf_builder_common.dart`), certains glyphes (ex. « œ »/« Œ », tiret cadratin « — ») apparaissaient absents ou mal rendus. Log de test : `Helvetica has no Unicode support`.
 - **Cause** : la police de base du package `pdf` (Helvetica) est limitée à Latin-1 et ne couvre pas Latin Extended-A / ponctuation étendue.

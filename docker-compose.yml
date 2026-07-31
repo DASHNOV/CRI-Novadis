@@ -34,6 +34,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
+      - ./export-storage:/app/export-storage
 
 volumes:
   postgres_data:
