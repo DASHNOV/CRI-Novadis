@@ -18,6 +18,13 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-07-31] Caractères manquants/mal rendus dans les PDF (œ, —, accents étendus) + suppression du champ « priorité » CRI
+- **Symptôme** : dans les PDF générés (`pdf_builder_common.dart`), certains glyphes (ex. « œ »/« Œ », tiret cadratin « — ») apparaissaient absents ou mal rendus. Log de test : `Helvetica has no Unicode support`.
+- **Cause** : la police de base du package `pdf` (Helvetica) est limitée à Latin-1 et ne couvre pas Latin Extended-A / ponctuation étendue.
+- **Correctif** : ajout des polices Lato (`frontend/assets/fonts/Lato-{Regular,Bold,Italic}.ttf`, déclarées dans `pubspec.yaml`) chargées via `_loadPdfTheme()` (`pdf_builder_common.dart`) et appliquées au `pw.Document(theme: pdfTheme)`, avec fallback silencieux vers Helvetica si le chargement échoue.
+- **Changement fonctionnel associé (même commit)** : suppression complète du champ « priorité » du CRI (jugé non pertinent à l'usage) — modèle, DTOs, contrôleur, service de stats/export back ; widget `PriorityChip` et ses tests supprimés front ; migration EF `RemoveCriServicePriority` (`DROP COLUMN Priority` + son index), **irréversible en base sans rollback manuel** (`Down()` du migration recrée la colonne mais les données seront perdues).
+- **Prévention** : pour tout ajout de texte contenant des caractères hors Latin-1 dans un PDF (ligatures, tirets typographiques, accents rares), vérifier que le thème `pdfTheme` (police Unicode) est bien appliqué au `pw.Document` — ne jamais utiliser `pw.Document()` sans thème pour du contenu utilisateur libre.
+
 ## [2026-07-21] Vulnérabilité Microsoft.Kiota.Abstractions 1.15.2 (CVE-2026-44503)
 - **Symptôme** : `dotnet restore/test` émet `warning NU1903` — `Microsoft.Kiota.Abstractions 1.15.2` a une vulnérabilité de gravité élevée (GHSA-7j59-v9qr-6fq9).
 - **Cause** : faille du `RedirectHandler` Kiota (< 1.22.0) — ne supprime pas les en-têtes sensibles (`Cookie`, `Proxy-Authorization`, en-têtes custom) lors d'une redirection cross-host/scheme → risque de fuite de cookies/credentials. Paquets Kiota tirés **en transitif** par `Microsoft.Graph 5.65.0` (utilisé par `EmailService` pour l'envoi de mails via Graph SendMail). Le SDK Graph, même en dernière 5.x (5.105.0 → Graph.Core 3.2.5), n'épingle encore que Kiota **1.21.1** < 1.22.0.
