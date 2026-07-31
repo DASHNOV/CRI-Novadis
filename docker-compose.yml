@@ -31,6 +31,11 @@ services:
       db:
         condition: service_healthy
     restart: always
+    # Le conteneur tourne en USER app (UID/GID 1654, images .NET 8+).
+    # Les dossiers hôte montés ci-dessous DOIVENT lui appartenir, sinon toute
+    # écriture échoue en "Access to the path ... is denied" :
+    #   sudo mkdir -p logs uploads export-storage
+    #   sudo chown -R 1654:1654 logs uploads export-storage
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
