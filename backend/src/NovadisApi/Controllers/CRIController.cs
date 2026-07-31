@@ -542,7 +542,6 @@ namespace NovadisApi.Controllers
 
                 // Champs Service
                 cri.TicketNumber = GetStringOrNull(root, "ticketNumber");
-                cri.Priority = GetStringOrNull(root, "priority");
                 cri.ResolutionStatus = GetStringOrNull(root, "resolutionStatus");
 
                 if (root.TryGetProperty("additionalInterventionRequired", out var addIntProp))

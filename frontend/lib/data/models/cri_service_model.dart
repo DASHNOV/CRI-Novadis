@@ -27,7 +27,6 @@ class CriServiceModel {
 
   // Section 3: Demande
   final ServiceRequestType requestType;
-  final ServicePriority priority;
   final String requestDescription;
 
   /// Statut du contrat (facultatif)
@@ -87,7 +86,6 @@ class CriServiceModel {
     this.phone,
     this.email,
     required this.requestType,
-    required this.priority,
     required this.requestDescription,
     this.contratType,
     this.systemTypes = const [],
@@ -220,7 +218,6 @@ class CriServiceModel {
     String? phone,
     String? email,
     ServiceRequestType? requestType,
-    ServicePriority? priority,
     String? requestDescription,
     ServiceContratType? contratType,
     bool clearContratType = false,
@@ -265,7 +262,6 @@ class CriServiceModel {
       phone: phone ?? this.phone,
       email: email ?? this.email,
       requestType: requestType ?? this.requestType,
-      priority: priority ?? this.priority,
       requestDescription: requestDescription ?? this.requestDescription,
       contratType: clearContratType ? null : (contratType ?? this.contratType),
       systemTypes: systemTypes ?? this.systemTypes,
@@ -316,7 +312,6 @@ class CriServiceModel {
       'phone': phone,
       'email': email,
       'requestType': requestType.name,
-      'priority': priority.name,
       'requestDescription': requestDescription,
       'contratType': contratType?.name,
       'systemTypes': systemTypes.map((e) => e.name).toList(),
@@ -364,7 +359,6 @@ class CriServiceModel {
       phone: Value(phone),
       email: Value(email),
       requestType: Value(requestType.name),
-      priority: Value(priority.name),
       requestDescription: Value(requestDescription),
       contratType: Value(contratType?.name),
       systemTypes: Value(
@@ -417,7 +411,6 @@ class CriServiceModel {
       phone: db.phone,
       email: db.email,
       requestType: ServiceRequestType.fromString(db.requestType),
-      priority: ServicePriority.fromString(db.priority),
       requestDescription: db.requestDescription,
       contratType: ServiceContratType.fromString(db.contratType),
       systemTypes: db.systemTypes == null || db.systemTypes!.isEmpty
@@ -474,7 +467,6 @@ class CriServiceModel {
       phone: json['phone'] as String?,
       email: json['email'] as String?,
       requestType: ServiceRequestType.fromString(json['requestType'] as String),
-      priority: ServicePriority.fromString(json['priority'] as String),
       requestDescription: json['requestDescription'] as String,
       contratType: ServiceContratType.fromString(json['contratType'] as String?),
       systemTypes: json['systemTypes'] == null
@@ -543,7 +535,6 @@ class CriServiceModel {
       clientName: '',
       site: '',
       requestType: ServiceRequestType.depannage,
-      priority: ServicePriority.normale,
       requestDescription: '',
       actionsPerformed: '',
       interventionDurationMinutes: 60,
@@ -557,7 +548,7 @@ class CriServiceModel {
 
   @override
   String toString() {
-    return 'CriServiceModel(id: $id, ticketNumber: $ticketNumber, clientName: $clientName, priority: ${priority.label})';
+    return 'CriServiceModel(id: $id, ticketNumber: $ticketNumber, clientName: $clientName)';
   }
 
   @override

@@ -198,7 +198,6 @@ void main() {
       final state = container.read(criServiceFormProvider);
       expect(state.currentCri, isNotNull);
       expect(state.currentCri!.technicianName, equals('Test Technician'));
-      expect(state.currentCri!.priority, equals(ServicePriority.normale));
       expect(
         state.currentCri!.resolutionStatus,
         equals(ResolutionStatus.nonResolu),
@@ -215,15 +214,6 @@ void main() {
 
       final state = container.read(criServiceFormProvider);
       expect(state.currentCri!.interventionDurationMinutes, equals(150));
-    });
-
-    test('updateRequestInfo updates priority', () {
-      notifier.initNewForm(technicianName: 'Test');
-
-      notifier.updateRequestInfo(priority: ServicePriority.critique);
-
-      final state = container.read(criServiceFormProvider);
-      expect(state.currentCri!.priority, equals(ServicePriority.critique));
     });
 
     test('updateFollowUpInfo handles conditional fields', () {

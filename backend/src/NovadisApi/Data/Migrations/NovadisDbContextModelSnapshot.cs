@@ -193,10 +193,6 @@ namespace NovadisApi.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("Priority")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
                     b.Property<string>("ProjectName")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -255,8 +251,6 @@ namespace NovadisApi.Data.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("InterventionDate");
-
-                    b.HasIndex("Priority");
 
                     b.HasIndex("ProjectNumber");
 

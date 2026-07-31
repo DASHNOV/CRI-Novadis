@@ -17,7 +17,6 @@ namespace NovadisApi.Models.DTOs
         public int TotalResolu { get; set; }
         public int TotalNonResolu { get; set; }
         public int TotalRecurrenceRequise { get; set; }
-        public Dictionary<string, int>? RepartitionParPriorite { get; set; }
         public Dictionary<string, int>? RepartitionParVille { get; set; }
     }
 }

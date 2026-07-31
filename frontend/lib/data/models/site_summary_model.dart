@@ -2,7 +2,6 @@ class SiteSummaryModel {
   final String siteName;
   final String lastVisitStatus;
   final int recurrenceLast6Months;
-  final bool hasUrgentPendingTickets;
   final List<SiteTimelineEventModel> timeline;
   final List<String> recommendations;
   final bool chronicityAlert;
@@ -15,7 +14,6 @@ class SiteSummaryModel {
     required this.siteName,
     required this.lastVisitStatus,
     required this.recurrenceLast6Months,
-    required this.hasUrgentPendingTickets,
     required this.timeline,
     required this.recommendations,
     required this.chronicityAlert,
@@ -30,7 +28,6 @@ class SiteSummaryModel {
       siteName: json['siteName'] as String,
       lastVisitStatus: json['lastVisitStatus'] as String,
       recurrenceLast6Months: json['recurrenceLast6Months'] as int,
-      hasUrgentPendingTickets: json['hasUrgentPendingTickets'] as bool,
       timeline: (json['timeline'] as List<dynamic>)
           .map((e) => SiteTimelineEventModel.fromJson(e as Map<String, dynamic>))
           .toList(),

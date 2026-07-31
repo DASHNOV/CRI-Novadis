@@ -10,7 +10,6 @@ class GlobalStats {
   final int totalResolu;
   final int totalNonResolu;
   final int totalRecurrenceRequise;
-  final Map<String, int>? repartitionParPriorite;
   final Map<String, int>? repartitionParVille;
 
   const GlobalStats({
@@ -24,7 +23,6 @@ class GlobalStats {
     this.totalResolu = 0,
     this.totalNonResolu = 0,
     this.totalRecurrenceRequise = 0,
-    this.repartitionParPriorite,
     this.repartitionParVille,
   });
 
@@ -40,7 +38,6 @@ class GlobalStats {
       totalResolu: json['totalResolu'] ?? 0,
       totalNonResolu: json['totalNonResolu'] ?? 0,
       totalRecurrenceRequise: json['totalRecurrenceRequise'] ?? 0,
-      repartitionParPriorite: _parseMap(json['repartitionParPriorite']),
       repartitionParVille: _parseMap(json['repartitionParVille']),
     );
   }

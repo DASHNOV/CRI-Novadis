@@ -97,7 +97,6 @@ Auth requise sur tous les endpoints. Admin voit tous les CRI, Technician voit un
   "techniciensActifs": 0, "dureeMoyenneMinutes": 0.0,
   "totalProjets": 0, "totalServices": 0,
   "totalResolu": 0, "totalNonResolu": 0, "totalRecurrenceRequise": 0,
-  "repartitionParPriorite": { "haute": 3, "normale": 12 },
   "repartitionParVille": { "Paris": 5, "Lyon": 2 }
 }
 ```
@@ -218,7 +217,6 @@ Visibilité : **Admin voit/ouvre tous les documents** (tous techniciens), le DTO
 | `clientSite` | string? | Nom du site client |
 | `ville` / `codePostal` | string? | Localisation |
 | `ticketNumber` | string? | Numéro de ticket (Service) |
-| `priority` | string? | `basse` / `normale` / `haute` / `critique` |
 | `resolutionStatus` | string? | `resolu` / `nonResolu` / `partiellementResolu` / `enAttente` |
 | `projectName` / `projectNumber` | string? | Champs Projet |
 | `projectPhase` | string? | `etude` / `realisation` / `maintenance` |

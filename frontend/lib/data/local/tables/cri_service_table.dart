@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:drift/drift.dart';
 
 /// Table Drift pour les CRI Service
@@ -30,7 +28,6 @@ class CriServiceTable extends Table {
 
   // Section 3: Demande
   TextColumn get requestType => text()(); // Enum value
-  TextColumn get priority => text()(); // Enum value
   TextColumn get requestDescription => text()();
 
   // Statut du contrat (facultatif) — Sous contrat / Hors contrat
@@ -100,37 +97,6 @@ enum ServiceRequestType {
     return ServiceRequestType.values.firstWhere(
       (e) => e.name == value || e.label == value,
       orElse: () => ServiceRequestType.depannage,
-    );
-  }
-}
-
-/// Niveaux de priorité
-enum ServicePriority {
-  basse('Basse'),
-  normale('Normale'),
-  haute('Haute'),
-  critique('Critique');
-
-  final String label;
-  const ServicePriority(this.label);
-
-  Color get color {
-    switch (this) {
-      case ServicePriority.basse:
-        return const Color(0xFF4CAF50); // Green
-      case ServicePriority.normale:
-        return const Color(0xFF2196F3); // Blue
-      case ServicePriority.haute:
-        return const Color(0xFFFF9800); // Orange
-      case ServicePriority.critique:
-        return const Color(0xFFF44336); // Red
-    }
-  }
-
-  static ServicePriority fromString(String value) {
-    return ServicePriority.values.firstWhere(
-      (e) => e.name == value || e.label == value,
-      orElse: () => ServicePriority.normale,
     );
   }
 }

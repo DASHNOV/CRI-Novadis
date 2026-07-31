@@ -22,6 +22,5 @@ namespace NovadisApi.Models.DTOs
         public DateTime? DerniereIntervention { get; set; }
         public int TechniciensDistincts { get; set; }
         public Dictionary<string, int>? RepartitionParCategorie { get; set; }
-        public Dictionary<string, int>? RepartitionParPriorite { get; set; }
     }
 }

@@ -2,7 +2,6 @@
 class DistributionStats {
   final List<CrossTabEntry>? categorieParSite;
   final List<CrossTabEntry>? technicienParSite;
-  final List<PrioriteResolutionEntry>? prioriteParResolution;
   final List<EvolutionMensuelleEntry>? evolutionMensuelle;
   final Map<String, int>? repartitionParVille;
   final Map<String, int>? repartitionParCategorie;
@@ -10,7 +9,6 @@ class DistributionStats {
   const DistributionStats({
     this.categorieParSite,
     this.technicienParSite,
-    this.prioriteParResolution,
     this.evolutionMensuelle,
     this.repartitionParVille,
     this.repartitionParCategorie,
@@ -23,10 +21,6 @@ class DistributionStats {
           .toList(),
       technicienParSite: (json['technicienParSite'] as List?)
           ?.map((e) => CrossTabEntry.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      prioriteParResolution: (json['prioriteParResolution'] as List?)
-          ?.map((e) =>
-              PrioriteResolutionEntry.fromJson(e as Map<String, dynamic>))
           .toList(),
       evolutionMensuelle: (json['evolutionMensuelle'] as List?)
           ?.map((e) =>
@@ -62,32 +56,6 @@ class CrossTabEntry {
       ligne: json['ligne'] ?? '',
       colonne: json['colonne'] ?? '',
       valeur: json['valeur'] ?? 0,
-    );
-  }
-}
-
-class PrioriteResolutionEntry {
-  final String priorite;
-  final int total;
-  final int resolu;
-  final int nonResolu;
-  final double? dureeMoyenneMinutes;
-
-  const PrioriteResolutionEntry({
-    required this.priorite,
-    required this.total,
-    this.resolu = 0,
-    this.nonResolu = 0,
-    this.dureeMoyenneMinutes,
-  });
-
-  factory PrioriteResolutionEntry.fromJson(Map<String, dynamic> json) {
-    return PrioriteResolutionEntry(
-      priorite: json['priorite'] ?? '',
-      total: json['total'] ?? 0,
-      resolu: json['resolu'] ?? 0,
-      nonResolu: json['nonResolu'] ?? 0,
-      dureeMoyenneMinutes: (json['dureeMoyenneMinutes'] as num?)?.toDouble(),
     );
   }
 }

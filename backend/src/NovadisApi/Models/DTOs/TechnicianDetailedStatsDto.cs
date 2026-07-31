@@ -31,7 +31,6 @@ namespace NovadisApi.Models.DTOs
     {
         public List<CrossTabEntry>? CategorieParSite { get; set; }
         public List<CrossTabEntry>? TechnicienParSite { get; set; }
-        public List<PrioriteResolutionEntry>? PrioriteParResolution { get; set; }
         public List<EvolutionMensuelleEntry>? EvolutionMensuelle { get; set; }
         public Dictionary<string, int>? RepartitionParVille { get; set; }
         public Dictionary<string, int>? RepartitionParCategorie { get; set; }
@@ -42,15 +41,6 @@ namespace NovadisApi.Models.DTOs
         public string Ligne { get; set; } = string.Empty;
         public string Colonne { get; set; } = string.Empty;
         public int Valeur { get; set; }
-    }
-
-    public class PrioriteResolutionEntry
-    {
-        public string Priorite { get; set; } = string.Empty;
-        public int Total { get; set; }
-        public int Resolu { get; set; }
-        public int NonResolu { get; set; }
-        public double? DureeMoyenneMinutes { get; set; }
     }
 
     public class EvolutionMensuelleEntry

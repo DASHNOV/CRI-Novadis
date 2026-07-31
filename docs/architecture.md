@@ -171,7 +171,7 @@ Désactivé en environnement `Test`.
 - **Statut** : `Status` (Draft → Submitted → Validated), `CreatedAt`, `UpdatedAt`, `SubmittedAt`
 - **Timing** : `InterventionDate`, `HeureDebut`, `HeureFin`, `DureeMinutes`
 - **Client** : `ClientName`, `ClientSite`, `ClientContact`, `ClientEmail`, `Ville`, `CodePostal`
-- **Service** : `TicketNumber`, `Priority` (basse/normale/haute/critique), `ResolutionStatus`
+- **Service** : `TicketNumber`, `ResolutionStatus`
 - **Projet** : `ProjectName`, `ProjectNumber`, `ProjectPhase`, `ProjectStatus`
 - **Média** : `TechnicianSignature` (Base64), `ClientSignature` (Base64), `Photos` (collection)
 
@@ -254,7 +254,7 @@ lib/
 
 | Table | Colonnes clés | Statuts |
 |-------|--------------|---------|
-| `cri_service` | interventionDate, ticketNumber, priority, resolutionStatus, photos, signatures, devisARealiser, facturable | syncStatus (pending/synced/failed), isDraft |
+| `cri_service` | interventionDate, ticketNumber, resolutionStatus, photos, signatures, devisARealiser, facturable | syncStatus (pending/synced/failed), isDraft |
 | `cri_projet` | interventionDate, projectName, projectNumber, projectPhase, softwares (JSON), photos, signatures | syncStatus, isDraft |
 | `exported_document` | criId, filename, filePath, fileType, exportType, metadata (JSON) | — |
 

@@ -91,9 +91,6 @@ namespace NovadisApi.Models
         [MaxLength(50)]
         public string? TicketNumber { get; set; }
 
-        [MaxLength(20)]
-        public string? Priority { get; set; } // basse, normale, haute, critique
-
         [MaxLength(30)]
         public string? ResolutionStatus { get; set; } // resolu, nonResolu, partiellementResolu, enAttente
 

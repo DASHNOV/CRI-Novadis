@@ -24,7 +24,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -58,6 +58,9 @@ class AppDatabase extends _$AppDatabase {
         if (from < 7) {
           await m.addColumn(criServiceTable, criServiceTable.endDate);
           await m.addColumn(criProjetTable, criProjetTable.endDate);
+        }
+        if (from < 8) {
+          await customStatement('ALTER TABLE cri_service DROP COLUMN priority');
         }
       },
       beforeOpen: (details) async {

@@ -167,8 +167,6 @@ namespace NovadisApi.Services.Export
             {
                 ws.Cell(row, 1).Value = "Numéro ticket"; StyleLabel(ws.Cell(row, 1));
                 ws.Cell(row, 2).Value = cri.TicketNumber ?? "-";
-                ws.Cell(row, 3).Value = "Priorité"; StyleLabel(ws.Cell(row, 3));
-                ws.Cell(row, 4).Value = cri.Priority ?? "-";
                 row++;
                 ws.Cell(row, 1).Value = "Statut résolution"; StyleLabel(ws.Cell(row, 1));
                 ws.Cell(row, 2).Value = cri.ResolutionStatus ?? "-";
@@ -453,24 +451,6 @@ namespace NovadisApi.Services.Export
                 row++;
             }
 
-            row++;
-            SectionHeader(ws, row++, "Répartition par priorité");
-            var priorityGroups = cris
-                .GroupBy(c => string.IsNullOrWhiteSpace(c.Priority) ? "(non renseignée)" : c.Priority)
-                .Select(g => (Label: g.Key, Count: g.Count()))
-                .OrderByDescending(x => x.Count)
-                .ToList();
-            foreach (var (label, count) in priorityGroups)
-            {
-                var pct = total > 0 ? Math.Round(count / (double)total * 100.0, 1) : 0.0;
-                WriteKpi(ws, ref row, label, $"{count} ({pct:0.#}%)");
-            }
-            if (priorityGroups.Count == 0)
-            {
-                ws.Cell(row, 1).Value = "Aucune donnée"; StyleLabel(ws.Cell(row, 1));
-                row++;
-            }
-
             ws.Column(1).Width = 26;
             ws.Column(2).Width = 22;
             ws.Column(3).Width = 26;
@@ -556,7 +536,7 @@ namespace NovadisApi.Services.Export
 
             string[] headers = {
                 "Date", "Type", "Catégorie", "Numéro ticket/projet", "Statut",
-                "Client", "Site", "Ville", "Technicien", "Priorité",
+                "Client", "Site", "Ville", "Technicien",
                 "Durée (h)", "Heure début", "Heure fin", "Résolution", "Soumis le"
             };
             for (var i = 0; i < headers.Length; i++)
@@ -591,24 +571,23 @@ namespace NovadisApi.Services.Export
                 ws.Cell(r, 9).Value = cri.Technician != null
                     ? $"{cri.Technician.FirstName} {cri.Technician.LastName}".Trim()
                     : "-";
-                ws.Cell(r, 10).Value = cri.Priority ?? "-";
-                ws.Cell(r, 11).Value = cri.DureeMinutes.HasValue ? Math.Round(cri.DureeMinutes.Value / 60.0, 2) : 0;
-                ws.Cell(r, 12).Value = cri.HeureDebut?.ToString(@"hh\:mm") ?? "-";
-                ws.Cell(r, 13).Value = cri.HeureFin?.ToString(@"hh\:mm") ?? "-";
-                ws.Cell(r, 14).Value = cri.ResolutionStatus ?? cri.ProjectStatus ?? "-";
+                ws.Cell(r, 10).Value = cri.DureeMinutes.HasValue ? Math.Round(cri.DureeMinutes.Value / 60.0, 2) : 0;
+                ws.Cell(r, 11).Value = cri.HeureDebut?.ToString(@"hh\:mm") ?? "-";
+                ws.Cell(r, 12).Value = cri.HeureFin?.ToString(@"hh\:mm") ?? "-";
+                ws.Cell(r, 13).Value = cri.ResolutionStatus ?? cri.ProjectStatus ?? "-";
                 var resolutionBadge = BadgeForResolution(cri.ResolutionStatus, cri.ProjectStatus);
-                ws.Cell(r, 14).Style.Fill.BackgroundColor = resolutionBadge.Bg;
-                ws.Cell(r, 14).Style.Font.FontColor = resolutionBadge.Fg;
-                ws.Cell(r, 14).Style.Font.Bold = true;
-                ws.Cell(r, 14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws.Cell(r, 13).Style.Fill.BackgroundColor = resolutionBadge.Bg;
+                ws.Cell(r, 13).Style.Font.FontColor = resolutionBadge.Fg;
+                ws.Cell(r, 13).Style.Font.Bold = true;
+                ws.Cell(r, 13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 if (cri.SubmittedAt.HasValue)
                 {
-                    ws.Cell(r, 15).Value = cri.SubmittedAt.Value;
-                    ws.Cell(r, 15).Style.DateFormat.Format = "dd/MM/yyyy HH:mm";
+                    ws.Cell(r, 14).Value = cri.SubmittedAt.Value;
+                    ws.Cell(r, 14).Style.DateFormat.Format = "dd/MM/yyyy HH:mm";
                 }
                 else
                 {
-                    ws.Cell(r, 15).Value = "-";
+                    ws.Cell(r, 14).Value = "-";
                 }
 
                 r++;
@@ -628,26 +607,26 @@ namespace NovadisApi.Services.Export
                 ws.Range(1, 1, lastDataRow, headers.Length).SetAutoFilter();
 
                 var totalRow = r;
-                var label = ws.Range(totalRow, 1, totalRow, 10).Merge();
+                var label = ws.Range(totalRow, 1, totalRow, 9).Merge();
                 label.Value = $"TOTAL — {cris.Count} intervention(s)";
                 label.Style.Font.Bold = true;
                 label.Style.Font.FontColor = HeaderFg;
                 label.Style.Fill.BackgroundColor = AccentBg;
                 label.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
 
-                var totalDuree = ws.Cell(totalRow, 11);
-                totalDuree.FormulaA1 = $"=SUM(K2:K{lastDataRow})";
+                var totalDuree = ws.Cell(totalRow, 10);
+                totalDuree.FormulaA1 = $"=SUM(J2:J{lastDataRow})";
                 totalDuree.Style.NumberFormat.Format = "0.00";
                 totalDuree.Style.Font.Bold = true;
                 totalDuree.Style.Font.FontColor = HeaderFg;
                 totalDuree.Style.Fill.BackgroundColor = AccentBg;
 
-                ws.Range(totalRow, 12, totalRow, headers.Length).Style.Fill.BackgroundColor = AccentBg;
+                ws.Range(totalRow, 11, totalRow, headers.Length).Style.Fill.BackgroundColor = AccentBg;
                 ws.Row(totalRow).Height = 20;
                 r++;
             }
 
-            double[] widths = { 12, 12, 16, 18, 12, 22, 22, 16, 22, 12, 12, 12, 12, 20, 18 };
+            double[] widths = { 12, 12, 16, 18, 12, 22, 22, 16, 22, 12, 12, 12, 20, 18 };
             for (var i = 0; i < widths.Length; i++)
             {
                 ws.Column(i + 1).Width = widths[i];
