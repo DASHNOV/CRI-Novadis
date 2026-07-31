@@ -234,6 +234,17 @@ lib/
   - Écran (détails/historique) : `MarkdownBody` (`flutter_markdown`).
   - XLSX (backend) : `XlsxExportService.StripMarkdown` retire la syntaxe → texte brut.
 - **Signature client** : `SignaturePadWidget.contextMarkdown` affiche le travail effectué (lecture seule, scrollable) dans la popup de signature, avant que le client signe.
+- `RichMarkdownField.controller` (optionnel) : contrôleur fourni par le parent pour injecter du texte (modèles). Sans lui, le champ garde son contrôleur interne (dispose côté widget).
+
+### Modèle « Maintenance préventive » (CRI Service)
+
+- **Déclencheur** : bouton « Utiliser le modèle Maintenance préventive » affiché dans l'étape *Intervention* **uniquement si** `requestType == ServiceRequestType.maintenancePreventive`.
+- **Données** : `cri_form/data/preventive_maintenance_template.dart` — en dur, aucun stockage DB/API.
+  - Blocs : *Base commune* (toujours coché), *Contrôle d'accès — Amadeus8* (systèmes contrôle d'accès / intrusion / hypervision), *Vidéo* (système vidéo, choix QVMS | Ocularis | Milestone XProtect).
+  - Pré-cochage automatique selon `cri.systemTypes` (saisis à l'étape *Demande*).
+  - Lignes « mise à jour » = champ libre version/licence, accolé entre parenthèses.
+- **UI** : `cri_form/widgets/preventive_template_sheet.dart` (bottom-sheet cases à cocher + aperçu `MarkdownBody`) → retourne le Markdown, `null` si annulé.
+- **Insertion** : liste à puces (`- `) dans `actionsPerformed`. Champ déjà rempli → dialogue **Remplacer / Ajouter à la suite / Annuler**. Sync contrôleur + `FormBuilder.didChange` + `updateInterventionInfo` (jamais d'écrasement silencieux).
 
 ### Intercepteur Dio (JWT auto-refresh)
 

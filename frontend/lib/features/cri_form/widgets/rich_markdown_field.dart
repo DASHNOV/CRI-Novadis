@@ -23,6 +23,11 @@ class RichMarkdownField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final String? Function(String?)? validator;
 
+  /// Contrôleur fourni par le parent (ex. pour insérer un modèle de texte).
+  /// Si non fourni, le champ en crée un en interne. Quand il est fourni, son
+  /// cycle de vie (création / dispose) est à la charge du parent.
+  final TextEditingController? controller;
+
   const RichMarkdownField({
     super.key,
     required this.name,
@@ -33,6 +38,7 @@ class RichMarkdownField extends StatefulWidget {
     this.minLines = 6,
     this.onChanged,
     this.validator,
+    this.controller,
   });
 
   @override
@@ -42,10 +48,17 @@ class RichMarkdownField extends StatefulWidget {
 class _RichMarkdownFieldState extends State<RichMarkdownField> {
   late final TextEditingController _controller;
 
+  /// true si le contrôleur appartient au widget (donc à disposer ici).
+  late final bool _ownsController;
+
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
+    _ownsController = widget.controller == null;
+    _controller = widget.controller ?? TextEditingController();
+    if (_controller.text.isEmpty && widget.initialValue.isNotEmpty) {
+      _controller.text = widget.initialValue;
+    }
     _controller.addListener(_notify);
   }
 
@@ -67,7 +80,7 @@ class _RichMarkdownFieldState extends State<RichMarkdownField> {
   @override
   void dispose() {
     _controller.removeListener(_notify);
-    _controller.dispose();
+    if (_ownsController) _controller.dispose();
     super.dispose();
   }
 

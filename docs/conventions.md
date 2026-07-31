@@ -41,6 +41,7 @@ features/[nom]/
 ├── screens/        # Pages complètes (routes GoRouter)
 ├── widgets/        # Composants spécifiques à la feature
 ├── controllers/    # StateNotifier (logique métier)
+├── data/           # Données statiques de la feature (modèles de saisie, listes…)
 └── pages/          # Alias de screens si distincts
 ```
 

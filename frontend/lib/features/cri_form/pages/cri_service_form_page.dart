@@ -10,6 +10,7 @@ import 'package:novadis_cri/data/local/tables/cri_service_table.dart';
 import 'package:novadis_cri/features/cri_form/controllers/cri_service_controller.dart';
 import 'package:novadis_cri/features/cri_form/controllers/cri_projet_controller.dart';
 import 'package:novadis_cri/features/cri_form/widgets/photo_picker.dart';
+import 'package:novadis_cri/features/cri_form/widgets/preventive_template_sheet.dart';
 import 'package:novadis_cri/features/cri_form/widgets/rich_markdown_field.dart';
 import 'package:novadis_cri/features/cri_form/widgets/signature_pad.dart';
 import 'package:novadis_cri/services/user_api_service.dart';
@@ -45,6 +46,10 @@ class _CriServiceFormPageState extends ConsumerState<CriServiceFormPage> {
   final _codePostalController = TextEditingController();
   final _paysController = TextEditingController();
 
+  // Contrôleur du champ « Travail effectué » : permet d'y insérer le modèle
+  // de maintenance préventive.
+  final _actionsPerformedController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +64,7 @@ class _CriServiceFormPageState extends ConsumerState<CriServiceFormPage> {
     _villeController.dispose();
     _codePostalController.dispose();
     _paysController.dispose();
+    _actionsPerformedController.dispose();
     super.dispose();
   }
 
@@ -1188,9 +1194,15 @@ class _CriServiceFormPageState extends ConsumerState<CriServiceFormPage> {
                   fontWeight: FontWeight.w600,
                 )),
           const SizedBox(height: 8),
+          if (state.currentCri?.requestType ==
+              ServiceRequestType.maintenancePreventive) ...[
+            _buildPreventiveTemplateButton(state),
+            const SizedBox(height: 12),
+          ],
           RichMarkdownField(
             name: 'actionsPerformed',
             label: 'Travail Effectué',
+            controller: _actionsPerformedController,
             initialValue: state.currentCri?.actionsPerformed ?? '',
             hintText: 'Actions réalisées',
             prefixIcon: Icons.build,
@@ -1200,6 +1212,73 @@ class _CriServiceFormPageState extends ConsumerState<CriServiceFormPage> {
                   .read(criServiceFormProvider.notifier)
                   .updateInterventionInfo(actionsPerformed: value);
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bouton d'insertion du modèle, visible uniquement pour les interventions
+  /// de maintenance préventive (contenu quasi identique d'un CRI à l'autre).
+  Widget _buildPreventiveTemplateButton(CriServiceFormState state) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: OutlinedButton.icon(
+        onPressed: () => _openPreventiveTemplate(state),
+        icon: const Icon(Icons.fact_check_outlined, size: 18),
+        label: const Text('Utiliser le modèle Maintenance préventive'),
+      ),
+    );
+  }
+
+  Future<void> _openPreventiveTemplate(CriServiceFormState state) async {
+    final markdown = await showPreventiveTemplateSheet(
+      context,
+      criSystems: state.currentCri?.systemTypes ?? const <ServiceSystemType>[],
+    );
+    if (markdown == null || !mounted) return;
+
+    final current = _actionsPerformedController.text.trim();
+    var replace = true;
+    if (current.isNotEmpty) {
+      final choice = await _askTemplateInsertMode();
+      if (choice == null || !mounted) return;
+      replace = choice;
+    }
+
+    final text = replace || current.isEmpty ? markdown : '$current\n$markdown';
+    _actionsPerformedController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    _formKey.currentState?.fields['actionsPerformed']?.didChange(text);
+    ref
+        .read(criServiceFormProvider.notifier)
+        .updateInterventionInfo(actionsPerformed: text);
+  }
+
+  /// true = remplacer, false = ajouter à la suite, null = annuler.
+  Future<bool?> _askTemplateInsertMode() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Le champ contient déjà du texte'),
+        content: const Text(
+          'Voulez-vous remplacer le contenu actuel par le modèle, ou l\'ajouter '
+          'à la suite ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Ajouter à la suite'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remplacer'),
           ),
         ],
       ),
