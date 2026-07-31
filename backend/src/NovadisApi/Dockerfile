@@ -12,7 +12,7 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-RUN mkdir -p logs uploads/cri-photos \
+RUN mkdir -p logs uploads/cri-photos export-storage \
     && chown -R app:app /app
 
 COPY --from=build --chown=app:app /app/publish .
