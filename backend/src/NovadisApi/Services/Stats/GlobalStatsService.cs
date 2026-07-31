@@ -38,13 +38,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
             TotalRecurrenceRequise = await baseQuery.CountAsync(c => c.AdditionalInterventionRequired == true, ct)
         };
 
-        var priorityStats = await baseQuery
-            .Where(c => c.Priority != null)
-            .GroupBy(c => c.Priority!)
-            .Select(g => new { Priority = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
-        stats.RepartitionParPriorite = priorityStats.ToDictionary(p => p.Priority, p => p.Count);
-
         var villeStats = await baseQuery
             .Where(c => c.Ville != null)
             .GroupBy(c => c.Ville!)
@@ -111,7 +104,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 Pays = c.Pays,
                 ClientContact = c.ClientContact,
                 TicketNumber = c.TicketNumber,
-                Priority = c.Priority,
                 ResolutionStatus = c.ResolutionStatus,
                 AdditionalInterventionRequired = c.AdditionalInterventionRequired,
                 ProjectName = c.ProjectName,
@@ -199,7 +191,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 c.DureeMinutes,
                 c.ResolutionStatus,
                 c.AdditionalInterventionRequired,
-                c.Priority,
                 c.TechnicianId,
                 c.InterventionDate
             })
@@ -225,11 +216,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
                     .GroupBy(c => c.Category)
                     .ToDictionary(cg => cg.Key!, cg => cg.Count());
 
-                var repartitionPrio = g
-                    .Where(c => !string.IsNullOrEmpty(c.Priority))
-                    .GroupBy(c => c.Priority)
-                    .ToDictionary(pg => pg.Key!, pg => pg.Count());
-
                 return new SiteStatsDto
                 {
                     SiteID = g.First().SiteID,
@@ -249,8 +235,7 @@ public sealed class GlobalStatsService : IGlobalStatsService
                     TopCategorieCount = topCategorie?.Count() ?? 0,
                     DerniereIntervention = g.Max(c => c.InterventionDate),
                     TechniciensDistincts = g.Select(c => c.TechnicianId).Distinct().Count(),
-                    RepartitionParCategorie = repartitionCat.Count > 0 ? repartitionCat : null,
-                    RepartitionParPriorite = repartitionPrio.Count > 0 ? repartitionPrio : null
+                    RepartitionParCategorie = repartitionCat.Count > 0 ? repartitionCat : null
                 };
             })
             .OrderByDescending(s => s.TotalInterventions)
@@ -348,7 +333,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 SiteNom = c.ClientSite ?? "(non renseigné)",
                 c.Category,
                 c.InterventionType,
-                c.Priority,
                 c.ResolutionStatus,
                 c.DureeMinutes,
                 c.Ville,
@@ -385,22 +369,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 })
                 .OrderByDescending(e => e.Valeur)
                 .Take(100)
-                .ToList(),
-
-            PrioriteParResolution = criList
-                .Where(c => !string.IsNullOrEmpty(c.Priority))
-                .GroupBy(c => c.Priority!)
-                .Select(g => new PrioriteResolutionEntry
-                {
-                    Priorite = g.Key,
-                    Total = g.Count(),
-                    Resolu = g.Count(c => c.ResolutionStatus == "resolu"),
-                    NonResolu = g.Count(c =>
-                        c.ResolutionStatus == "nonResolu" || c.ResolutionStatus == "partiellementResolu"),
-                    DureeMoyenneMinutes = g.Where(c => c.DureeMinutes > 0)
-                        .Select(c => (double?)c.DureeMinutes).DefaultIfEmpty().Average()
-                })
-                .OrderByDescending(p => p.Total)
                 .ToList(),
 
             EvolutionMensuelle = criList

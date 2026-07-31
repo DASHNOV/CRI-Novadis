@@ -71,7 +71,6 @@ namespace NovadisApi.Services
                         ReplacedParts = GetJsonString(json, "replacedParts"),
                         Recommendations = GetJsonString(json, "recommendations"),
                         CybersecurityRecommendations = GetJsonString(json, "cybersecurityRecommendations"),
-                        Priority = GetJsonString(json, "priority") ?? "normale",
                         ResolutionStatus = GetJsonString(json, "resolutionStatus") ?? "nonResolu"
                     });
                 }
@@ -90,12 +89,6 @@ namespace NovadisApi.Services
             // A. Flash Info
             var lastCri = processedCris.First();
             summary.LastVisitStatus = MapResolutionStatus(lastCri.ResolutionStatus);
-
-            // Urgence : uniquement les tickets haute/critique non résolus dans les 6 derniers mois
-            summary.HasUrgentPendingTickets = processedCris.Any(c =>
-                c.Date >= sixMonthsAgo &&
-                (c.Priority == "haute" || c.Priority == "critique") &&
-                c.ResolutionStatus != "resolu");
 
             // B. Timeline Critique (3 derniers événements)
             summary.Timeline = processedCris.Take(3).Select(c => new SiteTimelineEventDto
@@ -212,7 +205,6 @@ namespace NovadisApi.Services
             public string? ReplacedParts { get; set; }
             public string? Recommendations { get; set; }
             public string? CybersecurityRecommendations { get; set; }
-            public string Priority { get; set; } = string.Empty;
             public string ResolutionStatus { get; set; } = string.Empty;
         }
     }

@@ -159,7 +159,6 @@ void main() {
       expect(model.id, equals('test-id'));
       expect(model.technicianName, equals('John Doe'));
       expect(model.requestType, equals(ServiceRequestType.depannage));
-      expect(model.priority, equals(ServicePriority.normale));
       expect(model.resolutionStatus, equals(ResolutionStatus.nonResolu));
       expect(model.isDraft, isTrue);
       // Numéro de ticket vide pour un brouillon (génération auto retirée, cf. commit 4cbd407)
@@ -192,7 +191,6 @@ void main() {
             technicianName: 'John Doe',
           ).copyWith(
             clientName: 'Client Test',
-            priority: ServicePriority.haute,
             additionalInterventionRequired: true,
           );
 
@@ -201,7 +199,6 @@ void main() {
 
       expect(restored.id, equals(original.id));
       expect(restored.clientName, equals(original.clientName));
-      expect(restored.priority, equals(original.priority));
       expect(
         restored.additionalInterventionRequired,
         equals(original.additionalInterventionRequired),

@@ -13,7 +13,6 @@ import 'package:novadis_cri/features/cri_form/widgets/photo_picker.dart';
 import 'package:novadis_cri/features/cri_form/widgets/rich_markdown_field.dart';
 import 'package:novadis_cri/features/cri_form/widgets/signature_pad.dart';
 import 'package:novadis_cri/services/user_api_service.dart';
-import 'package:novadis_cri/features/cri_form/widgets/priority_chip.dart';
 import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 import 'package:novadis_cri/data/models/site_model.dart';
 import 'package:novadis_cri/features/cri_form/widgets/site_selector.dart';
@@ -328,10 +327,6 @@ class _CriServiceFormPageState extends ConsumerState<CriServiceFormPage> {
         title: widget.criId == null ? 'Nouveau CRI Service' : 'Modifier CRI Service',
         isDirty: state.isDirty,
         onSaveDraft: () => ref.read(criServiceFormProvider.notifier).saveDraft(),
-        extraActions: [
-          if (state.currentCri != null)
-            PriorityChip(priority: state.currentCri!.priority, showIcon: true),
-        ],
       ),
       body: Column(
         children: [
@@ -962,74 +957,41 @@ class _CriServiceFormPageState extends ConsumerState<CriServiceFormPage> {
   Step _buildRequestStep(CriServiceFormState state, ThemeData theme) {
     return Step(
       title: const Text('Demande'),
-      subtitle: const Text('Type et priorité'),
+      subtitle: const Text('Type d\'intervention'),
       isActive: _currentStep >= 2,
       state: _currentStep > 2 ? StepState.complete : StepState.indexed,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(builder: (context, constraints) {
-            final field1 = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Type de demande *', style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                )),
-                const SizedBox(height: 8),
-                FormBuilderDropdown<ServiceRequestType>(
-                  name: 'requestType',
-                  initialValue:
-                      state.currentCri?.requestType ?? ServiceRequestType.depannage,
-                  decoration: const InputDecoration(
-                    hintText: 'Type de demande',
-                    prefixIcon: Icon(Icons.category),
-                  ),
-                  items: ServiceRequestType.values.map((type) {
-                    return DropdownMenuItem(value: type, child: Text(type.label));
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref
-                          .read(criServiceFormProvider.notifier)
-                          .updateRequestInfo(requestType: value);
-                    }
-                  },
-                ),
-              ],
-            );
-            final field2 = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Priorité *', style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                )),
-                const SizedBox(height: 8),
-                PrioritySelector(
-                  selectedPriority: state.currentCri?.priority,
-                  onPriorityChanged: (priority) {
-                    ref
-                        .read(criServiceFormProvider.notifier)
-                        .updateRequestInfo(priority: priority);
-                  },
-                ),
-              ],
-            );
-            if (constraints.maxWidth > 600) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: field1),
-                  const SizedBox(width: 16),
-                  Expanded(child: field2),
-                ],
-              );
-            }
-            return Column(children: [field1, const SizedBox(height: 16), field2]);
-          }),
+          Text('Type de demande *', style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          )),
+          const SizedBox(height: 8),
+          FormBuilderDropdown<ServiceRequestType>(
+            name: 'requestType',
+            initialValue: widget.criId == null
+                ? null
+                : state.currentCri?.requestType,
+            decoration: const InputDecoration(
+              hintText: 'Type de demande',
+              prefixIcon: Icon(Icons.category),
+            ),
+            validator: FormBuilderValidators.required(
+              errorText: 'Type de demande requis',
+            ),
+            items: ServiceRequestType.values.map((type) {
+              return DropdownMenuItem(value: type, child: Text(type.label));
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                ref
+                    .read(criServiceFormProvider.notifier)
+                    .updateRequestInfo(requestType: value);
+              }
+            },
+          ),
           const SizedBox(height: 16),
           Text(
             'Motif de l\'intervention *',

@@ -40,6 +40,7 @@ mixin PdfBuilderCommon {
   );
 
   pw.ImageProvider? _logo;
+  pw.ThemeData? _pdfTheme;
 
   Future<void> loadLogo() async {
     if (_logo != null) return;
@@ -49,6 +50,28 @@ mixin PdfBuilderCommon {
     } catch (e) {
       debugPrint('[PDF] Logo non trouvé: $e');
     }
+  }
+
+  /// Charge une police Unicode (Lato) pour le rendu PDF.
+  /// Les polices de base (Helvetica) du package `pdf` sont limitées à Latin-1
+  /// et ne contiennent pas les glyphes comme "œ"/"Œ" (Latin Extended-A),
+  /// qui apparaissent alors manquants ou mal rendus dans le PDF généré.
+  Future<pw.ThemeData> _loadPdfTheme() async {
+    if (_pdfTheme != null) return _pdfTheme!;
+    try {
+      final regularData = await rootBundle.load('assets/fonts/Lato-Regular.ttf');
+      final boldData = await rootBundle.load('assets/fonts/Lato-Bold.ttf');
+      final italicData = await rootBundle.load('assets/fonts/Lato-Italic.ttf');
+      _pdfTheme = pw.ThemeData.withFont(
+        base: pw.Font.ttf(regularData),
+        bold: pw.Font.ttf(boldData),
+        italic: pw.Font.ttf(italicData),
+      );
+    } catch (e) {
+      debugPrint('[PDF] Police Unicode non trouvée, fallback Helvetica: $e');
+      _pdfTheme = pw.ThemeData.base();
+    }
+    return _pdfTheme!;
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -84,6 +107,7 @@ mixin PdfBuilderCommon {
 
   Future<pw.Document> buildCriServiceDocument(CriServiceModel cri) async {
     await loadLogo();
+    final pdfTheme = await _loadPdfTheme();
 
     // Pré-charger toutes les signatures techniciens + client
     final techSigBytesList = await Future.wait(
@@ -91,7 +115,7 @@ mixin PdfBuilderCommon {
     );
     final clientSigBytes = await _resolveSignatureBytes(cri.clientSignature);
 
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: pdfTheme);
     final dateFormat = DateFormat('dd/MM/yyyy');
     final timeFormat = DateFormat('HH:mm');
 
@@ -249,7 +273,9 @@ mixin PdfBuilderCommon {
                 techNames: cri.technicianNames.isNotEmpty ? cri.technicianNames : [cri.technicianName],
                 techEmail: 'sav@novadis.eu',
                 clientName: cri.clientName,
+                clientContact: cri.clientContact,
                 clientEmail: cri.email,
+                clientPhone: cri.phone,
                 techSignatureBytesList: techSigBytesList,
                 clientSignatureBytes: clientSigBytes,
               ),
@@ -275,6 +301,7 @@ mixin PdfBuilderCommon {
 
   Future<pw.Document> buildCriProjetDocument(CriProjetModel cri) async {
     await loadLogo();
+    final pdfTheme = await _loadPdfTheme();
 
     // Pré-charger toutes les signatures techniciens + client
     final techSigBytesList = await Future.wait(
@@ -282,7 +309,7 @@ mixin PdfBuilderCommon {
     );
     final clientSigBytes = await _resolveSignatureBytes(cri.clientSignature);
 
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: pdfTheme);
     final dateFormat = DateFormat('dd/MM/yyyy');
     final timeFormat = DateFormat('HH:mm');
 
@@ -460,7 +487,9 @@ mixin PdfBuilderCommon {
                 techNames: cri.technicianNames.isNotEmpty ? cri.technicianNames : [cri.technicianName],
                 techEmail: 'tech@novadis.eu',
                 clientName: cri.clientName,
+                clientContact: cri.clientContact,
                 clientEmail: cri.email,
+                clientPhone: cri.phone,
                 techSignatureBytesList: techSigBytesList,
                 clientSignatureBytes: clientSigBytes,
               ),
@@ -835,7 +864,9 @@ mixin PdfBuilderCommon {
     required List<String> techNames,
     required String techEmail,
     required String clientName,
+    String? clientContact,
     String? clientEmail,
+    String? clientPhone,
     required List<Uint8List?> techSignatureBytesList,
     Uint8List? clientSignatureBytes,
   }) {
@@ -910,6 +941,14 @@ mixin PdfBuilderCommon {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text('Client :', style: _labelStyle),
+                  if (clientContact != null && clientContact.isNotEmpty)
+                    pw.Text(
+                      clientContact,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   pw.Text('Société :', style: _smallStyle),
                   pw.Text(
                     clientName,
@@ -921,6 +960,11 @@ mixin PdfBuilderCommon {
                   if (clientEmail != null && clientEmail.isNotEmpty)
                     pw.Text(
                       'Mail de contact :\n$clientEmail',
+                      style: _smallStyle,
+                    ),
+                  if (clientPhone != null && clientPhone.isNotEmpty)
+                    pw.Text(
+                      'Téléphone : $clientPhone',
                       style: _smallStyle,
                     ),
                   pw.SizedBox(height: 4),

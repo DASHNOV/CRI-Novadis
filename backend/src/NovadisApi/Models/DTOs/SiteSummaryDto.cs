@@ -7,7 +7,6 @@ namespace NovadisApi.Models.DTOs
         // A. Flash Info
         public string LastVisitStatus { get; set; } = "Inconnu"; // Résolu, Partiel, Non Résolu
         public int RecurrenceLast6Months { get; set; }
-        public bool HasUrgentPendingTickets { get; set; }
 
         // B. Timeline Critique (Last 3 events)
         public List<SiteTimelineEventDto> Timeline { get; set; } = new List<SiteTimelineEventDto>();

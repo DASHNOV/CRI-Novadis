@@ -101,12 +101,6 @@ class $CriServiceTableTable extends CriServiceTable
   late final GeneratedColumn<String> requestType = GeneratedColumn<String>(
       'request_type', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _priorityMeta =
-      const VerificationMeta('priority');
-  @override
-  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
-      'priority', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _requestDescriptionMeta =
       const VerificationMeta('requestDescription');
   @override
@@ -296,7 +290,6 @@ class $CriServiceTableTable extends CriServiceTable
         phone,
         email,
         requestType,
-        priority,
         requestDescription,
         contratType,
         systemTypes,
@@ -421,12 +414,6 @@ class $CriServiceTableTable extends CriServiceTable
               data['request_type']!, _requestTypeMeta));
     } else if (isInserting) {
       context.missing(_requestTypeMeta);
-    }
-    if (data.containsKey('priority')) {
-      context.handle(_priorityMeta,
-          priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta));
-    } else if (isInserting) {
-      context.missing(_priorityMeta);
     }
     if (data.containsKey('request_description')) {
       context.handle(
@@ -624,8 +611,6 @@ class $CriServiceTableTable extends CriServiceTable
           .read(DriftSqlType.string, data['${effectivePrefix}email']),
       requestType: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}request_type'])!,
-      priority: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}priority'])!,
       requestDescription: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}request_description'])!,
       contratType: attachedDatabase.typeMapping
@@ -705,7 +690,6 @@ class CriService extends DataClass implements Insertable<CriService> {
   final String? phone;
   final String? email;
   final String requestType;
-  final String priority;
   final String requestDescription;
   final String? contratType;
   final String? systemTypes;
@@ -748,7 +732,6 @@ class CriService extends DataClass implements Insertable<CriService> {
       this.phone,
       this.email,
       required this.requestType,
-      required this.priority,
       required this.requestDescription,
       this.contratType,
       this.systemTypes,
@@ -811,7 +794,6 @@ class CriService extends DataClass implements Insertable<CriService> {
       map['email'] = Variable<String>(email);
     }
     map['request_type'] = Variable<String>(requestType);
-    map['priority'] = Variable<String>(priority);
     map['request_description'] = Variable<String>(requestDescription);
     if (!nullToAbsent || contratType != null) {
       map['contrat_type'] = Variable<String>(contratType);
@@ -902,7 +884,6 @@ class CriService extends DataClass implements Insertable<CriService> {
       email:
           email == null && nullToAbsent ? const Value.absent() : Value(email),
       requestType: Value(requestType),
-      priority: Value(priority),
       requestDescription: Value(requestDescription),
       contratType: contratType == null && nullToAbsent
           ? const Value.absent()
@@ -979,7 +960,6 @@ class CriService extends DataClass implements Insertable<CriService> {
       phone: serializer.fromJson<String?>(json['phone']),
       email: serializer.fromJson<String?>(json['email']),
       requestType: serializer.fromJson<String>(json['requestType']),
-      priority: serializer.fromJson<String>(json['priority']),
       requestDescription:
           serializer.fromJson<String>(json['requestDescription']),
       contratType: serializer.fromJson<String?>(json['contratType']),
@@ -1033,7 +1013,6 @@ class CriService extends DataClass implements Insertable<CriService> {
       'phone': serializer.toJson<String?>(phone),
       'email': serializer.toJson<String?>(email),
       'requestType': serializer.toJson<String>(requestType),
-      'priority': serializer.toJson<String>(priority),
       'requestDescription': serializer.toJson<String>(requestDescription),
       'contratType': serializer.toJson<String?>(contratType),
       'systemTypes': serializer.toJson<String?>(systemTypes),
@@ -1082,7 +1061,6 @@ class CriService extends DataClass implements Insertable<CriService> {
           Value<String?> phone = const Value.absent(),
           Value<String?> email = const Value.absent(),
           String? requestType,
-          String? priority,
           String? requestDescription,
           Value<String?> contratType = const Value.absent(),
           Value<String?> systemTypes = const Value.absent(),
@@ -1127,7 +1105,6 @@ class CriService extends DataClass implements Insertable<CriService> {
         phone: phone.present ? phone.value : this.phone,
         email: email.present ? email.value : this.email,
         requestType: requestType ?? this.requestType,
-        priority: priority ?? this.priority,
         requestDescription: requestDescription ?? this.requestDescription,
         contratType: contratType.present ? contratType.value : this.contratType,
         systemTypes: systemTypes.present ? systemTypes.value : this.systemTypes,
@@ -1200,7 +1177,6 @@ class CriService extends DataClass implements Insertable<CriService> {
       email: data.email.present ? data.email.value : this.email,
       requestType:
           data.requestType.present ? data.requestType.value : this.requestType,
-      priority: data.priority.present ? data.priority.value : this.priority,
       requestDescription: data.requestDescription.present
           ? data.requestDescription.value
           : this.requestDescription,
@@ -1287,7 +1263,6 @@ class CriService extends DataClass implements Insertable<CriService> {
           ..write('phone: $phone, ')
           ..write('email: $email, ')
           ..write('requestType: $requestType, ')
-          ..write('priority: $priority, ')
           ..write('requestDescription: $requestDescription, ')
           ..write('contratType: $contratType, ')
           ..write('systemTypes: $systemTypes, ')
@@ -1337,7 +1312,6 @@ class CriService extends DataClass implements Insertable<CriService> {
         phone,
         email,
         requestType,
-        priority,
         requestDescription,
         contratType,
         systemTypes,
@@ -1384,7 +1358,6 @@ class CriService extends DataClass implements Insertable<CriService> {
           other.phone == this.phone &&
           other.email == this.email &&
           other.requestType == this.requestType &&
-          other.priority == this.priority &&
           other.requestDescription == this.requestDescription &&
           other.contratType == this.contratType &&
           other.systemTypes == this.systemTypes &&
@@ -1432,7 +1405,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
   final Value<String?> phone;
   final Value<String?> email;
   final Value<String> requestType;
-  final Value<String> priority;
   final Value<String> requestDescription;
   final Value<String?> contratType;
   final Value<String?> systemTypes;
@@ -1476,7 +1448,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
     this.phone = const Value.absent(),
     this.email = const Value.absent(),
     this.requestType = const Value.absent(),
-    this.priority = const Value.absent(),
     this.requestDescription = const Value.absent(),
     this.contratType = const Value.absent(),
     this.systemTypes = const Value.absent(),
@@ -1521,7 +1492,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
     this.phone = const Value.absent(),
     this.email = const Value.absent(),
     required String requestType,
-    required String priority,
     required String requestDescription,
     this.contratType = const Value.absent(),
     this.systemTypes = const Value.absent(),
@@ -1555,7 +1525,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
         clientName = Value(clientName),
         site = Value(site),
         requestType = Value(requestType),
-        priority = Value(priority),
         requestDescription = Value(requestDescription),
         actionsPerformed = Value(actionsPerformed),
         interventionDurationMinutes = Value(interventionDurationMinutes),
@@ -1578,7 +1547,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
     Expression<String>? phone,
     Expression<String>? email,
     Expression<String>? requestType,
-    Expression<String>? priority,
     Expression<String>? requestDescription,
     Expression<String>? contratType,
     Expression<String>? systemTypes,
@@ -1623,7 +1591,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
       if (phone != null) 'phone': phone,
       if (email != null) 'email': email,
       if (requestType != null) 'request_type': requestType,
-      if (priority != null) 'priority': priority,
       if (requestDescription != null) 'request_description': requestDescription,
       if (contratType != null) 'contrat_type': contratType,
       if (systemTypes != null) 'system_types': systemTypes,
@@ -1675,7 +1642,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
       Value<String?>? phone,
       Value<String?>? email,
       Value<String>? requestType,
-      Value<String>? priority,
       Value<String>? requestDescription,
       Value<String?>? contratType,
       Value<String?>? systemTypes,
@@ -1719,7 +1685,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
       phone: phone ?? this.phone,
       email: email ?? this.email,
       requestType: requestType ?? this.requestType,
-      priority: priority ?? this.priority,
       requestDescription: requestDescription ?? this.requestDescription,
       contratType: contratType ?? this.contratType,
       systemTypes: systemTypes ?? this.systemTypes,
@@ -1802,9 +1767,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
     }
     if (requestType.present) {
       map['request_type'] = Variable<String>(requestType.value);
-    }
-    if (priority.present) {
-      map['priority'] = Variable<String>(priority.value);
     }
     if (requestDescription.present) {
       map['request_description'] = Variable<String>(requestDescription.value);
@@ -1909,7 +1871,6 @@ class CriServiceTableCompanion extends UpdateCompanion<CriService> {
           ..write('phone: $phone, ')
           ..write('email: $email, ')
           ..write('requestType: $requestType, ')
-          ..write('priority: $priority, ')
           ..write('requestDescription: $requestDescription, ')
           ..write('contratType: $contratType, ')
           ..write('systemTypes: $systemTypes, ')
@@ -4073,7 +4034,6 @@ typedef $$CriServiceTableTableCreateCompanionBuilder = CriServiceTableCompanion
   Value<String?> phone,
   Value<String?> email,
   required String requestType,
-  required String priority,
   required String requestDescription,
   Value<String?> contratType,
   Value<String?> systemTypes,
@@ -4119,7 +4079,6 @@ typedef $$CriServiceTableTableUpdateCompanionBuilder = CriServiceTableCompanion
   Value<String?> phone,
   Value<String?> email,
   Value<String> requestType,
-  Value<String> priority,
   Value<String> requestDescription,
   Value<String?> contratType,
   Value<String?> systemTypes,
@@ -4205,9 +4164,6 @@ class $$CriServiceTableTableFilterComposer
 
   ColumnFilters<String> get requestType => $composableBuilder(
       column: $table.requestType, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get priority => $composableBuilder(
-      column: $table.priority, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get requestDescription => $composableBuilder(
       column: $table.requestDescription,
@@ -4359,9 +4315,6 @@ class $$CriServiceTableTableOrderingComposer
 
   ColumnOrderings<String> get requestType => $composableBuilder(
       column: $table.requestType, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get priority => $composableBuilder(
-      column: $table.priority, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get requestDescription => $composableBuilder(
       column: $table.requestDescription,
@@ -4515,9 +4468,6 @@ class $$CriServiceTableTableAnnotationComposer
   GeneratedColumn<String> get requestType => $composableBuilder(
       column: $table.requestType, builder: (column) => column);
 
-  GeneratedColumn<String> get priority =>
-      $composableBuilder(column: $table.priority, builder: (column) => column);
-
   GeneratedColumn<String> get requestDescription => $composableBuilder(
       column: $table.requestDescription, builder: (column) => column);
 
@@ -4641,7 +4591,6 @@ class $$CriServiceTableTableTableManager extends RootTableManager<
             Value<String?> phone = const Value.absent(),
             Value<String?> email = const Value.absent(),
             Value<String> requestType = const Value.absent(),
-            Value<String> priority = const Value.absent(),
             Value<String> requestDescription = const Value.absent(),
             Value<String?> contratType = const Value.absent(),
             Value<String?> systemTypes = const Value.absent(),
@@ -4686,7 +4635,6 @@ class $$CriServiceTableTableTableManager extends RootTableManager<
             phone: phone,
             email: email,
             requestType: requestType,
-            priority: priority,
             requestDescription: requestDescription,
             contratType: contratType,
             systemTypes: systemTypes,
@@ -4731,7 +4679,6 @@ class $$CriServiceTableTableTableManager extends RootTableManager<
             Value<String?> phone = const Value.absent(),
             Value<String?> email = const Value.absent(),
             required String requestType,
-            required String priority,
             required String requestDescription,
             Value<String?> contratType = const Value.absent(),
             Value<String?> systemTypes = const Value.absent(),
@@ -4776,7 +4723,6 @@ class $$CriServiceTableTableTableManager extends RootTableManager<
             phone: phone,
             email: email,
             requestType: requestType,
-            priority: priority,
             requestDescription: requestDescription,
             contratType: contratType,
             systemTypes: systemTypes,

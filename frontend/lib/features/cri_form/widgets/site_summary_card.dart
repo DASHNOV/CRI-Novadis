@@ -215,14 +215,6 @@ class SiteSummaryCard extends StatelessWidget {
               summary.recurrenceLast6Months.toString(),
               summary.recurrenceLast6Months > 5 ? AppTheme.warning : AppTheme.success,
             ),
-            if (summary.hasUrgentPendingTickets)
-              _buildIndicator(
-                context,
-                'Urgence',
-                'Tickets ouverts',
-                AppTheme.error,
-                icon: Icons.priority_high,
-              ),
           ],
         ),
         if (showSecondRow) ...[

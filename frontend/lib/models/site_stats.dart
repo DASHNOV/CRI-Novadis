@@ -17,7 +17,6 @@ class SiteStats {
   final DateTime? derniereIntervention;
   final int techniciensDistincts;
   final Map<String, int>? repartitionParCategorie;
-  final Map<String, int>? repartitionParPriorite;
 
   const SiteStats({
     this.siteID,
@@ -37,7 +36,6 @@ class SiteStats {
     this.derniereIntervention,
     this.techniciensDistincts = 0,
     this.repartitionParCategorie,
-    this.repartitionParPriorite,
   });
 
   factory SiteStats.fromJson(Map<String, dynamic> json) {
@@ -61,7 +59,6 @@ class SiteStats {
           : null,
       techniciensDistincts: json['techniciensDistincts'] ?? 0,
       repartitionParCategorie: _parseMap(json['repartitionParCategorie']),
-      repartitionParPriorite: _parseMap(json['repartitionParPriorite']),
     );
   }
 

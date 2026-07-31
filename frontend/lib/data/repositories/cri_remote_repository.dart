@@ -87,7 +87,6 @@ class CriRemoteRepository {
               site: item['clientSite']?.toString() ?? '',
               address: item['clientAddress']?.toString(),
               requestType: ServiceRequestType.depannage,
-              priority: ServicePriority.normale,
               requestDescription: item['workDescription']?.toString() ?? '',
               actionsPerformed: item['workDescription']?.toString() ?? '',
               interventionDurationMinutes: (item['duration'] != null)

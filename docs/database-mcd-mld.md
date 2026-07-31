@@ -63,7 +63,6 @@ erDiagram
         string Pays
         string ClientContact
         string TicketNumber
-        string Priority
         string ResolutionStatus
         bool   AdditionalInterventionRequired
         string ProjectName
@@ -215,7 +214,7 @@ CRIForms(__Id__: uuid,
       CreatedAt, UpdatedAt, SubmittedAt,
       HeureDebut, HeureFin, DureeMinutes,
       Ville, CodePostal, Pays, ClientContact,
-      TicketNumber, Priority, ResolutionStatus, AdditionalInterventionRequired,
+      TicketNumber, ResolutionStatus, AdditionalInterventionRequired,
       ProjectName, ProjectNumber, ProjectPhase, ProjectStatus)
 
 CRIPhotos(__Id__: uuid,
@@ -253,7 +252,7 @@ ExportedDocuments(__Id__: uuid,
 | Users | Email | UNIQUE |
 | Sites | NomDuSite, Ville, CodePostal | non-unique |
 | ClientsNormalises | RaisonSociale, Ville | non-unique |
-| CRIForms | TechnicianId, CreatedAt, InterventionDate, Status, Priority, ResolutionStatus, Ville, ProjectStatus, TicketNumber, ProjectNumber, SiteID, ClientID | non-unique |
+| CRIForms | TechnicianId, CreatedAt, InterventionDate, Status, ResolutionStatus, Ville, ProjectStatus, TicketNumber, ProjectNumber, SiteID, ClientID | non-unique |
 | CRIPhotos | CRIFormId | non-unique |
 | AuditLogs | UserId, CreatedAt | non-unique |
 | AuthAttempts | Email, (Email, CreatedAt) | non-unique |
@@ -266,7 +265,7 @@ ExportedDocuments(__Id__: uuid,
 ## 3. Notes d'implémentation
 
 - **SGBD** : PostgreSQL (migré depuis SQL Server). Les types `Guid` C# → `uuid` PG ; `string` → `varchar`/`text` ; `DateTime` → `timestamp` ; `TimeSpan` → `interval` ; `bool` → `boolean`.
-- **Phase 1** : colonnes statistiques extraites du JSON `Data` directement dans `CRIForms` (`Ville`, `CodePostal`, `Priority`, `ProjectStatus`, etc.) pour requêtes indexées.
+- **Phase 1** : colonnes statistiques extraites du JSON `Data` directement dans `CRIForms` (`Ville`, `CodePostal`, `ProjectStatus`, etc.) pour requêtes indexées.
 - **Phase 2** : normalisation des relations `CRIForms.SiteID` → `Sites` et `CRIForms.ClientID` → `ClientsNormalises` (FK nullables, déduplication progressive).
 - **Auth** : `AuthAttempts` (OTP) et `MagicLinks` ne sont pas reliés par FK à `Users` — ils opèrent sur l'`Email` avant identification.
 - **`ExportedDocuments.CriId`** : champ déclaré mais pas configuré comme FK dans `OnModelCreating` — relation logique uniquement.

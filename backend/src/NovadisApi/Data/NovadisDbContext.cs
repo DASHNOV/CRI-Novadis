@@ -112,7 +112,6 @@ namespace NovadisApi.Data
                 // Index sur les colonnes statistiques (Phase 1)
                 entity.HasIndex(e => e.InterventionDate);
                 entity.HasIndex(e => e.Status);
-                entity.HasIndex(e => e.Priority);
                 entity.HasIndex(e => e.ResolutionStatus);
                 entity.HasIndex(e => e.Ville);
                 entity.HasIndex(e => e.ProjectStatus);

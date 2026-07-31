@@ -58,7 +58,6 @@ namespace NovadisApi.Models.DTOs
         public string? Pays { get; set; }
         public string? ClientContact { get; set; }
         public string? TicketNumber { get; set; }
-        public string? Priority { get; set; }
         public string? ResolutionStatus { get; set; }
         public bool? AdditionalInterventionRequired { get; set; }
         public string? ProjectName { get; set; }

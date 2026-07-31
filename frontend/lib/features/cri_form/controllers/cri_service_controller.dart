@@ -152,14 +152,12 @@ class CriServiceFormNotifier extends StateNotifier<CriServiceFormState> {
 
   void updateRequestInfo({
     ServiceRequestType? requestType,
-    ServicePriority? priority,
     String? requestDescription,
   }) {
     if (state.currentCri == null) return;
     state = state.copyWith(
       currentCri: state.currentCri!.copyWith(
         requestType: requestType,
-        priority: priority,
         requestDescription: requestDescription,
       ),
       isDirty: true,
