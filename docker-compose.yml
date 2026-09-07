@@ -13,6 +13,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # Plafonds mémoire — voir le commentaire du service `api` ci-dessous.
+    mem_limit: 768m
+    shm_size: 256m
 
   api:
     image: cri-novadis-api:latest
@@ -31,6 +34,22 @@ services:
       db:
         condition: service_healthy
     restart: always
+    # Plafonds de ressources — sans eux, un export XLSX annuel consomme la mémoire
+    # de l'HÔTE et fige le VPS au lieu de faire échouer la seule requête fautive.
+    # Ajuster à la RAM réelle du serveur : viser api + db ≈ 70 % du total.
+    # memswap_limit = mem_limit désactive le swap (sinon le conteneur rame sans
+    # jamais déclencher l'OOM killer, ce qui reproduit le symptôme de gel).
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 1.5
+    # Permet à Docker de redémarrer une API bloquée mais encore vivante.
+    # curl est installé dans l'étape runtime du Dockerfile pour cette sonde.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5200/api/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     # Le conteneur tourne en USER app (UID/GID 1654, images .NET 8+).
     # Les dossiers hôte montés ci-dessous DOIVENT lui appartenir, sinon toute
     # écriture échoue en "Access to the path ... is denied" :
