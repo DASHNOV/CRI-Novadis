@@ -39,9 +39,12 @@ services:
     # Ajuster à la RAM réelle du serveur : viser api + db ≈ 70 % du total.
     # memswap_limit = mem_limit désactive le swap (sinon le conteneur rame sans
     # jamais déclencher l'OOM killer, ce qui reproduit le symptôme de gel).
+    # Pas de limite `cpus` : le serveur n'a qu'un seul cœur, et Docker rejette
+    # toute valeur supérieure à 1.00 ("range of CPUs is from 0.01 to 1.00").
+    # Plafonner le CPU n'apporterait rien ici — c'est la mémoire qui a figé
+    # l'hôte, pas la contention processeur.
     mem_limit: 1g
     memswap_limit: 1g
-    cpus: 1.5
     # Permet à Docker de redémarrer une API bloquée mais encore vivante.
     # curl est installé dans l'étape runtime du Dockerfile pour cette sonde.
     healthcheck:
