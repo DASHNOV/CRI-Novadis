@@ -2,7 +2,7 @@
 
 ## Stack
 - **Frontend**: Flutter/Dart (web + mobile) — `frontend/`
-- **Backend**: ASP.NET Core (.NET 8) — `backend/src/NovadisApi/`
+- **Backend**: ASP.NET Core (.NET 10) — `backend/src/NovadisApi/`
 - **DB**: PostgreSQL (Npgsql + EF Core), migrations manuelles
 - **Auth**: Magic link OTP → JWT (access + refresh)
 
@@ -32,7 +32,7 @@ dotnet run                     # écoute http://0.0.0.0:5200
 
 ## URLs
 - API prod : `https://api.cri-novadis.tech/api`
-- API locale : `http://192.168.200.214:5200/api`
+- API locale : `http://192.168.70.114:5200/api`
 - Swagger : racine de l'API (`/`)
 
 ## Documentation

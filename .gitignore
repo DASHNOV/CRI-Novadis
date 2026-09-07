@@ -11,6 +11,9 @@ graphify-out/
 docs/Guide_CRI_Novadis.docx
 docs/Guide_CRI_Novadis.pdf
 
+# Plan de remédiation post-audit (document de travail local, non versionné)
+PLAN_REMEDIATION.md
+
 # Variables d'environnement (secrets : ConnectionStrings, Jwt, Email)
 .env
 **/.env
