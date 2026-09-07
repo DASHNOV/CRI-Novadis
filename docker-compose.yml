@@ -14,8 +14,8 @@ services:
       timeout: 5s
       retries: 5
     # Plafonds mémoire — voir le commentaire du service `api` ci-dessous.
-    mem_limit: 768m
-    shm_size: 256m
+    mem_limit: 400m
+    shm_size: 128m
 
   api:
     image: cri-novadis-api:latest
@@ -36,15 +36,21 @@ services:
     restart: always
     # Plafonds de ressources — sans eux, un export XLSX annuel consomme la mémoire
     # de l'HÔTE et fige le VPS au lieu de faire échouer la seule requête fautive.
-    # Ajuster à la RAM réelle du serveur : viser api + db ≈ 70 % du total.
+    #
+    # Dimensionné pour le serveur réel : 1 cœur, 1,9 Gio de RAM (2026-09-07).
+    #   api 850m + db 400m = 1250 Mio, soit ~64 % du total.
+    # Le reste couvre le système, cloudflared, sshd et le cache disque. Ne pas
+    # monter ces valeurs sans vérifier `free -h` : trop serrer laisse l'OOM killer
+    # s'en prendre à sshd plutôt qu'au conteneur fautif.
+    #
     # memswap_limit = mem_limit désactive le swap (sinon le conteneur rame sans
     # jamais déclencher l'OOM killer, ce qui reproduit le symptôme de gel).
     # Pas de limite `cpus` : le serveur n'a qu'un seul cœur, et Docker rejette
     # toute valeur supérieure à 1.00 ("range of CPUs is from 0.01 to 1.00").
     # Plafonner le CPU n'apporterait rien ici — c'est la mémoire qui a figé
     # l'hôte, pas la contention processeur.
-    mem_limit: 1g
-    memswap_limit: 1g
+    mem_limit: 850m
+    memswap_limit: 850m
     # Permet à Docker de redémarrer une API bloquée mais encore vivante.
     # curl est installé dans l'étape runtime du Dockerfile pour cette sonde.
     healthcheck:
