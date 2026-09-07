@@ -51,6 +51,13 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Version épinglée sur celle du poste de développement : sans elle, la CI
+          # installe le dernier Flutter publié et valide donc autre chose que ce qui
+          # est réellement exécuté — et peut casser à chaque publication en amont
+          # (c'est ce qui s'est produit avec la contrainte intl le 2026-09-07).
+          # À faire évoluer avec la montée de version Flutter (étape 4.3 du plan),
+          # en modifiant le poste et la CI dans le même geste.
+          flutter-version: 3.41.4
 
       - name: Pub get
         working-directory: frontend
