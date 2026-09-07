@@ -53,7 +53,7 @@ avertissement sur `stderr` — visible dans `backup.log` et dans le mail de cron
 curl https://rclone.org/install.sh | sudo bash
 
 # 2. Créer le remote (nom attendu : "offsite")
-#    Choisir "s3" puis le fournisseur (Scaleway / OVH / Backblaze B2…)
+#    Backblaze B2 : type "b2", puis keyID / applicationKey
 rclone config
 
 # 3. Vérifier
@@ -65,6 +65,41 @@ Le remote et le bucket sont surchargeables sans modifier le script :
 
 ```bash
 OFFSITE_REMOTE=autre-remote OFFSITE_BUCKET=autre-bucket ./backup-server.sh
+```
+
+### ⚠️ La configuration rclone doit exister pour l'utilisateur du cron
+
+`rclone config` écrit dans le home de **l'utilisateur courant**. Or la tâche planifiée vit
+dans le crontab de **root** (`sudo crontab -l`). Une configuration créée en tant que `remy`
+atterrit dans `/home/remy/.config/rclone/rclone.conf` : root ne la voit pas, `rclone listremotes`
+ne renvoie rien, et le script bascule dans sa branche d'avertissement. Le test manuel réussit,
+la sauvegarde nocturne échoue en silence.
+
+```bash
+sudo mkdir -p /root/.config/rclone
+sudo cp /home/remy/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
+sudo chmod 600 /root/.config/rclone/rclone.conf
+sudo rclone listremotes                  # doit afficher "offsite:"
+```
+
+**Le seul test qui valide la sauvegarde automatique est celui lancé dans les conditions du cron :**
+
+```bash
+sudo /opt/cri-novadis/backup-server.sh   # doit finir par "Copie hors site terminée"
+```
+
+La clé B2 est donc présente dans deux fichiers. En cas de rotation, mettre à jour **les deux** —
+ou supprimer la copie de `remy` et n'utiliser que `sudo` pour toute opération de sauvegarde.
+
+### Rattrapage de l'historique existant
+
+Le script filtre sur `--max-age 48h` pour ne pas re-scanner 14 jours d'archives chaque nuit.
+Lors de la première mise en place, les sauvegardes antérieures restent donc en local. Une copie
+unique sans filtre d'âge les envoie hors site :
+
+```bash
+sudo rclone copy /opt/cri-novadis/backups offsite:cri-novadis-backups \
+  --include "db_*.sql.gz" --include "export-storage_*.tar.gz" --progress
 ```
 
 ### Règles à respecter
