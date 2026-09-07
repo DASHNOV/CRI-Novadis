@@ -253,13 +253,19 @@ Valeurs sensibles dans `.env` (jamais committé) — chargé via `DotNetEnv` au 
 | `feature/xxx` | Nouvelle fonctionnalité |
 | `fix/xxx` | Correction de bug |
 | `doc_xxx` | Documentation uniquement |
-| `dev` | Branche d'intégration — déclenche les déploiements |
-| `master` | Production |
+| `dev` | Branche de développement / intégration — **ne déploie pas** |
+| `main` | **Production** — déclenche les déploiements |
+
+> ⚠️ `main` et `dev` ont échangé leurs rôles le 2026-09-07. Auparavant `dev` déployait et
+> `master` servait de branche de production. Toute documentation ou script mentionnant
+> encore `master`, ou un déploiement depuis `dev`, est périmé.
 
 ### CI/CD triggers
 
-- Push ou PR sur `dev` → tests CI + déploiement API (si backend modifié) + déploiement Vercel
-- Push ou PR sur `master` → tests CI uniquement
+- Push ou PR sur `dev` → tests CI uniquement
+- Push sur `main` → tests CI, puis déploiement API (si `backend/**` ou `docker-compose.yml` modifié) et déploiement Vercel (si `frontend/**` modifié)
+
+Flux nominal : `feature/xxx` → `dev` (tests) → `main` (tests + déploiement).
 
 ### Endpoints dev-only
 

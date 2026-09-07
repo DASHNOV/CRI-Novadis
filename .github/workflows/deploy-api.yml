@@ -3,8 +3,10 @@ name: Deploy API to Production
 on:
   workflow_dispatch:
   push:
+    # `main` est la branche de PRODUCTION : c'est elle qui déploie.
+    # `dev` est la branche de développement — elle ne déclenche que ci-tests.yml.
     branches:
-      - dev
+      - main
     paths:
       - "backend/**"
       - "docker-compose.yml"

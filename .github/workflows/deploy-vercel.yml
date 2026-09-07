@@ -2,8 +2,14 @@ name: Deploy to Vercel
 
 on:
   push:
+    # `main` est la branche de PRODUCTION (cf. deploy-api.yml).
     branches:
-      - dev
+      - main
+    # Sans ce filtre, un commit purement backend redéploie l'application web.
+    paths:
+      - "frontend/**"
+      - "build_vercel.sh"
+      - ".github/workflows/deploy-vercel.yml"
 
 jobs:
   deploy:

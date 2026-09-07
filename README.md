@@ -105,9 +105,12 @@ Voir [`docs/architecture.md`](docs/architecture.md) pour le schéma détaillé.
 
 | Workflow | Déclencheur | Action |
 |----------|-------------|--------|
-| `ci-tests.yml` | push/PR sur `master`/`dev` | Tests backend (.NET) + frontend (Flutter) |
-| `deploy-api.yml` | push sur `dev` (backend modifié) | Build + déploiement sur serveur Windows interne |
-| `deploy-vercel.yml` | push sur `dev` | Build Flutter web + déploiement Vercel |
+| `ci-tests.yml` | push/PR sur `main`/`dev` | Tests backend (.NET) + frontend (Flutter) |
+| `deploy-api.yml` | push sur `main` (backend ou `docker-compose.yml` modifié) | Build + déploiement de l'API sur le VPS |
+| `deploy-vercel.yml` | push sur `main` (frontend modifié) | Build Flutter web + déploiement Vercel |
+
+`main` est la branche de **production**, `dev` la branche de développement.
+Flux nominal : `feature/xxx` → `dev` (tests) → `main` (tests + déploiement).
 
 ## Documentation
 
