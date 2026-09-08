@@ -118,7 +118,7 @@ namespace NovadisApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de l'import des sites");
-                return StatusCode(500, ApiResponse<object>.ErrorResponse($"Erreur: {ex.Message}"));
+                return StatusCode(500, ApiResponse<object>.ErrorResponse("L'import des sites a échoué."));
             }
         }
 

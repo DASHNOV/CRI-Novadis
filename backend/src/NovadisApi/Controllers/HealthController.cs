@@ -90,7 +90,8 @@ namespace NovadisApi.Controllers
             }
             catch (Exception ex)
             {
-                checks["disk"] = new { status = "unknown", error = ex.Message };
+                _logger.LogWarning(ex, "Health: espace disque illisible");
+                checks["disk"] = new { status = "unknown" };
             }
 
             // 3️⃣ Mémoire process
@@ -149,7 +150,7 @@ namespace NovadisApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to fetch stats");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "Statistiques indisponibles." });
             }
         }
     }
