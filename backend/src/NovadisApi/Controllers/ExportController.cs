@@ -79,7 +79,7 @@ namespace NovadisApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "XLSX export CRI {Id} — échec de génération", id);
-                return StatusCode(500, new { error = ex.Message, type = ex.GetType().Name, stack = ex.StackTrace });
+                return StatusCode(500, new { error = "La génération de l'export a échoué." });
             }
         }
 
@@ -143,7 +143,7 @@ namespace NovadisApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "XLSX export période {Range} {Date} — échec", range, reference);
-                return StatusCode(500, new { error = ex.Message, type = ex.GetType().Name, stack = ex.StackTrace });
+                return StatusCode(500, new { error = "La génération de l'export a échoué." });
             }
         }
 
