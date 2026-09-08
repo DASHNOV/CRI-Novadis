@@ -194,11 +194,13 @@ Visibilité : **Admin voit/ouvre tous les documents** (tous techniciens), le DTO
 
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
-| GET | `/live` | ❌ | Liveness probe (toujours 200) |
-| GET | `/` | ❌ | Health check complet DB (200 OK / 503 si KO) |
-| GET | `/stats` | ❌ | Stats DB (nb users, CRI, photos, logs) |
-| GET | `/users` | ❌ | Liste tous les utilisateurs |
-| GET | `/test-write` | ❌ | Test d'écriture DB |
+| GET | `/live` | ❌ | Liveness probe (toujours 200) — sonde Docker et monitoring externe |
+| GET | `/` | Admin | Readiness : DB, latence, disque, mémoire (200 OK / 503 si KO) |
+| GET | `/stats` | Admin | Compteurs DB (users, CRI, photos, logs, CRI par statut) |
+
+> `/users` et `/test-write` ont été supprimés (phase 1.1 du plan de remédiation) : ils
+> servaient l'annuaire complet des utilisateurs sans authentification. `/stats` n'expose
+> plus `recentCris` (noms de clients).
 
 ---
 
