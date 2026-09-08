@@ -112,7 +112,7 @@ Désactivé en environnement `Test`.
 | `SitesController` | `api/sites` | TechnicianOrAdmin |
 | `SiteSummaryController` | `api/sites` | TechnicianOrAdmin |
 | `UsersController` | `api/users` | Admin |
-| `HealthController` | `api/health` | Public |
+| `HealthController` | `api/health` | Admin (sauf `/live`, public) |
 
 ### Services enregistrés (DI)
 
