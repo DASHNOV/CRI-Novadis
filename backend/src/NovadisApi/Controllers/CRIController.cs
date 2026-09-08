@@ -112,35 +112,25 @@ namespace NovadisApi.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<CRIForm>>> CreateCRI([FromBody] CRIForm cri)
+        public async Task<ActionResult<ApiResponse<CRIForm>>> CreateCRI([FromBody] CriInputDto input)
         {
             var userId = GetCurrentUserId();
             if (userId == null)
                 return Unauthorized(ApiResponse<CRIForm>.ErrorResponse("Utilisateur non identifié"));
 
-            cri.Id = cri.Id == Guid.Empty ? Guid.NewGuid() : cri.Id;
+            if (!input.HasValidStatus())
+                return BadRequest(ApiResponse<CRIForm>.ErrorResponse(InvalidStatusMessage));
 
-            var existing = await _context.CRIForms.FindAsync(cri.Id);
+            var criId = input.Id.GetValueOrDefault() == Guid.Empty ? Guid.NewGuid() : input.Id!.Value;
+
+            var existing = await _context.CRIForms.FindAsync(criId);
             if (existing != null)
             {
                 // CRI already exists on server (e.g. draft saved before) — update it
                 if (existing.TechnicianId != userId.Value && !User.IsInRole("Admin"))
                     return Forbid();
 
-                existing.InterventionType = cri.InterventionType;
-                existing.Category = cri.Category;
-                existing.InterventionDate = cri.InterventionDate;
-                existing.ClientName = cri.ClientName;
-                existing.ClientAddress = cri.ClientAddress;
-                existing.ClientPhone = cri.ClientPhone;
-                existing.ClientEmail = cri.ClientEmail;
-                existing.WorkDescription = cri.WorkDescription;
-                existing.MaterialsUsed = cri.MaterialsUsed;
-                existing.Duration = cri.Duration;
-                existing.Status = cri.Status;
-                existing.Data = cri.Data;
-                existing.TechnicianSignature = cri.TechnicianSignature;
-                existing.ClientSignature = cri.ClientSignature;
+                ApplyTo(input, existing);
                 existing.UpdatedAt = DateTime.UtcNow;
 
                 ExtractDataFields(existing);
@@ -154,11 +144,20 @@ namespace NovadisApi.Controllers
                 return Ok(ApiResponse<CRIForm>.SuccessResponse(existing));
             }
 
-            cri.TechnicianId = userId.Value;
-            cri.CreatedAt = DateTime.UtcNow;
+            var cri = new CRIForm
+            {
+                Id = criId,
+                // Positionné depuis le jeton, jamais depuis le corps de requête.
+                TechnicianId = userId.Value,
+                CreatedAt = DateTime.UtcNow,
+            };
+            ApplyTo(input, cri);
 
             ExtractDataFields(cri);
             await ResolveRelations(cri);
+
+            if (cri.Status == "Submitted" && cri.SubmittedAt == null)
+                cri.SubmittedAt = DateTime.UtcNow;
 
             _context.CRIForms.Add(cri);
             await _context.SaveChangesAsync();
@@ -167,11 +166,14 @@ namespace NovadisApi.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<ApiResponse<CRIForm>>> UpdateCRI(Guid id, [FromBody] CRIForm criUpdate)
+        public async Task<ActionResult<ApiResponse<CRIForm>>> UpdateCRI(Guid id, [FromBody] CriInputDto input)
         {
             var userId = GetCurrentUserId();
             if (userId == null)
                 return Unauthorized(ApiResponse<CRIForm>.ErrorResponse("Utilisateur non identifié"));
+
+            if (!input.HasValidStatus())
+                return BadRequest(ApiResponse<CRIForm>.ErrorResponse(InvalidStatusMessage));
 
             var cri = await _context.CRIForms.FindAsync(id);
 
@@ -196,20 +198,7 @@ namespace NovadisApi.Controllers
             }
 
             // Mise à jour des champs
-            cri.InterventionType = criUpdate.InterventionType;
-            cri.Category = criUpdate.Category;
-            cri.InterventionDate = criUpdate.InterventionDate;
-            cri.ClientName = criUpdate.ClientName;
-            cri.ClientAddress = criUpdate.ClientAddress;
-            cri.ClientPhone = criUpdate.ClientPhone;
-            cri.ClientEmail = criUpdate.ClientEmail;
-            cri.WorkDescription = criUpdate.WorkDescription;
-            cri.MaterialsUsed = criUpdate.MaterialsUsed;
-            cri.Duration = criUpdate.Duration;
-            cri.Status = criUpdate.Status;
-            cri.Data = criUpdate.Data;
-            cri.TechnicianSignature = criUpdate.TechnicianSignature;
-            cri.ClientSignature = criUpdate.ClientSignature;
+            ApplyTo(input, cri);
             cri.UpdatedAt = DateTime.UtcNow;
 
             ExtractDataFields(cri);
@@ -443,6 +432,37 @@ namespace NovadisApi.Controllers
         /// Résout les relations normalisées : ClientSite → SiteID, ClientName → ClientID.
         /// Si le client n'existe pas, il est créé automatiquement.
         /// </summary>
+        private const string InvalidStatusMessage =
+            "Statut invalide. Valeurs acceptées : Draft, Submitted, Validated.";
+
+        /// <summary>
+        /// Recopie champ par champ le corps de requête sur l'entité.
+        ///
+        /// La liste explicite EST la barrière de sécurité : elle garantit qu'aucune
+        /// propriété hors de cette énumération — TechnicianId, Technician, Photos,
+        /// Client, Site, CreatedAt, SubmittedAt — ne peut être pilotée depuis le
+        /// réseau. Ne pas remplacer par un mapper automatique, qui réintroduirait
+        /// exactement le problème que le DTO ferme.
+        /// </summary>
+        private static void ApplyTo(CriInputDto src, CRIForm target)
+        {
+            target.InterventionType = src.InterventionType;
+            target.Category = src.Category;
+            target.InterventionDate = src.InterventionDate;
+            target.ClientName = src.ClientName;
+            target.ClientAddress = src.ClientAddress;
+            target.ClientSite = src.ClientSite;
+            target.ClientPhone = src.ClientPhone;
+            target.ClientEmail = src.ClientEmail;
+            target.WorkDescription = src.WorkDescription;
+            target.MaterialsUsed = src.MaterialsUsed;
+            target.Duration = src.Duration;
+            target.Status = src.Status;
+            target.Data = src.Data;
+            target.TechnicianSignature = src.TechnicianSignature;
+            target.ClientSignature = src.ClientSignature;
+        }
+
         private async Task ResolveRelations(CRIForm cri)
         {
             // ── Résolution Site ──

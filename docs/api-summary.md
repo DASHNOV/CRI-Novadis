@@ -69,6 +69,21 @@ Auth requise sur tous les endpoints. Admin voit tous les CRI, Technician voit un
 | GET | `/{id}/photos/{photoId}` | Télécharger une photo (binaire) |
 | DELETE | `/{id}/photos/{photoId}` | Supprimer une photo |
 
+**`POST /` et `PUT /{id}`** — corps : `CriInputDto` uniquement (16 champs scalaires).
+
+```
+id?, interventionType, category, interventionDate, clientName, clientAddress?,
+clientSite?, clientPhone?, clientEmail?, workDescription?, materialsUsed?,
+duration?, status, data?, technicianSignature?, clientSignature?
+```
+
+> Toute autre clé du corps est ignorée : `technician`, `photos`, `client`, `site`,
+> `technicianId`, `createdAt`, `submittedAt` ne sont plus liables depuis le réseau
+> (avant la phase 1.3, EF matérialisait ces graphes — un `technician` avec
+> `role: "Admin"` créait un utilisateur administrateur).
+> `technicianId` vient toujours du jeton. `status` doit valoir `Draft`, `Submitted`
+> ou `Validated`, sinon **400**.
+
 **`PATCH /{id}/signature`** — corps :
 ```json
 { "clientSignature": "base64_string_or_MANUAL_VALIDATION" }
