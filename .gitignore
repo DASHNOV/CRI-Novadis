@@ -19,3 +19,7 @@ PLAN_REMEDIATION.md
 **/.env
 # Exception : le frontend ne contient que l'API_URL (pas de secret)
 !frontend/.env
+
+# Python (scripts de vérification)
+__pycache__/
+*.pyc
