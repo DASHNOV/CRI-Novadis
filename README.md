@@ -120,6 +120,8 @@ Flux nominal : `feature/xxx` → `dev` (tests) → `main` (tests + déploiement)
 | [`docs/api-summary.md`](docs/api-summary.md) | Tous les endpoints avec méthode, auth et description |
 | [`docs/conventions.md`](docs/conventions.md) | Conventions de code, nommage, Git |
 | [`docs/resolved-issues.md`](docs/resolved-issues.md) | Bugs complexes résolus avec cause et prévention |
+| [`docs/disaster-recovery.md`](docs/disaster-recovery.md) | **Procédure de restauration** — à suivre en cas de perte de données ou de serveur |
+| [`scripts/README-backup.md`](scripts/README-backup.md) | Sauvegardes quotidiennes et copie hors site |
 | [`SECURITY.md`](SECURITY.md) | Politique de sécurité |
 
 ## Build production

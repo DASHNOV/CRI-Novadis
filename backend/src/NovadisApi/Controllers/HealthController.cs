@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NovadisApi.Attributes;
 using NovadisApi.Data;
 
 namespace NovadisApi.Controllers
@@ -10,6 +12,7 @@ namespace NovadisApi.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
+    [Authorize]
     public class HealthController : ControllerBase
     {
         private readonly NovadisDbContext _context;
@@ -27,6 +30,7 @@ namespace NovadisApi.Controllers
         /// Liveness probe : l'API tourne (pas de check DB).
         /// </summary>
         [HttpGet("live")]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult Live() => Ok(new { status = "alive", timestamp = DateTime.UtcNow });
 
@@ -34,7 +38,10 @@ namespace NovadisApi.Controllers
         /// Readiness probe enrichie : DB, latence, espace disque, mémoire.
         /// </summary>
         [HttpGet]
+        [RoleAuthorize("Admin")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Get()
         {
@@ -83,7 +90,8 @@ namespace NovadisApi.Controllers
             }
             catch (Exception ex)
             {
-                checks["disk"] = new { status = "unknown", error = ex.Message };
+                _logger.LogWarning(ex, "Health: espace disque illisible");
+                checks["disk"] = new { status = "unknown" };
             }
 
             // 3️⃣ Mémoire process
@@ -113,109 +121,13 @@ namespace NovadisApi.Controllers
         }
 
         /// <summary>
-        /// Récupère la liste des utilisateurs (pour test)
-        /// </summary>
-        /// <returns>Liste des utilisateurs sans informations sensibles</returns>
-        [HttpGet("users")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetUsers()
-        {
-            try
-            {
-                _logger.LogInformation("Fetching users for health check");
-
-                var users = await _context.Users
-                    .Select(u => new
-                    {
-                        u.Id,
-                        u.Email,
-                        u.Role,
-                        u.FirstName,
-                        u.LastName,
-                        u.IsActive,
-                        u.CreatedAt,
-                        u.LastLoginAt
-                    })
-                    .ToListAsync();
-
-                return Ok(new
-                {
-                    count = users.Count,
-                    users = users,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to fetch users");
-
-                return StatusCode(500, new
-                {
-                    error = ex.Message,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-        }
-
-        /// <summary>
-        /// Teste la création et suppression d'un enregistrement (test write)
-        /// </summary>
-        [HttpGet("test-write")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> TestWrite()
-        {
-            try
-            {
-                _logger.LogInformation("Testing database write operations");
-
-                // Créer un log de test
-                var testLog = new NovadisApi.Models.AuditLog
-                {
-                    Action = "HealthCheckTest",
-                    Details = "Test de connexion en écriture",
-                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.AuditLogs.Add(testLog);
-                await _context.SaveChangesAsync();
-
-                var logId = testLog.Id;
-
-                // Supprimer immédiatement
-                _context.AuditLogs.Remove(testLog);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Database write test successful, created and deleted log {LogId}", logId);
-
-                return Ok(new
-                {
-                    status = "success",
-                    message = "Test d'écriture réussi",
-                    testLogId = logId,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Database write test failed");
-
-                return StatusCode(500, new
-                {
-                    status = "failed",
-                    error = ex.Message,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-        }
-
-        /// <summary>
         /// Statistiques détaillées de la base de données
         /// </summary>
         [HttpGet("stats")]
+        [RoleAuthorize("Admin")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetStats()
         {
             try
@@ -230,18 +142,6 @@ namespace NovadisApi.Controllers
                         .GroupBy(c => c.Status)
                         .Select(g => new { status = g.Key, count = g.Count() })
                         .ToListAsync(),
-                    recentCris = await _context.CRIForms
-                        .OrderByDescending(c => c.CreatedAt)
-                        .Take(5)
-                        .Select(c => new
-                        {
-                            c.Id,
-                            c.ClientName,
-                            c.InterventionType,
-                            c.Status,
-                            c.CreatedAt
-                        })
-                        .ToListAsync(),
                     timestamp = DateTime.UtcNow
                 };
 
@@ -250,7 +150,7 @@ namespace NovadisApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to fetch stats");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "Statistiques indisponibles." });
             }
         }
     }

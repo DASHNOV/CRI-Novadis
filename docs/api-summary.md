@@ -69,6 +69,21 @@ Auth requise sur tous les endpoints. Admin voit tous les CRI, Technician voit un
 | GET | `/{id}/photos/{photoId}` | Télécharger une photo (binaire) |
 | DELETE | `/{id}/photos/{photoId}` | Supprimer une photo |
 
+**`POST /` et `PUT /{id}`** — corps : `CriInputDto` uniquement (16 champs scalaires).
+
+```
+id?, interventionType, category, interventionDate, clientName, clientAddress?,
+clientSite?, clientPhone?, clientEmail?, workDescription?, materialsUsed?,
+duration?, status, data?, technicianSignature?, clientSignature?
+```
+
+> Toute autre clé du corps est ignorée : `technician`, `photos`, `client`, `site`,
+> `technicianId`, `createdAt`, `submittedAt` ne sont plus liables depuis le réseau
+> (avant la phase 1.3, EF matérialisait ces graphes — un `technician` avec
+> `role: "Admin"` créait un utilisateur administrateur).
+> `technicianId` vient toujours du jeton. `status` doit valoir `Draft`, `Submitted`
+> ou `Validated`, sinon **400**.
+
 **`PATCH /{id}/signature`** — corps :
 ```json
 { "clientSignature": "base64_string_or_MANUAL_VALIDATION" }
@@ -194,11 +209,13 @@ Visibilité : **Admin voit/ouvre tous les documents** (tous techniciens), le DTO
 
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
-| GET | `/live` | ❌ | Liveness probe (toujours 200) |
-| GET | `/` | ❌ | Health check complet DB (200 OK / 503 si KO) |
-| GET | `/stats` | ❌ | Stats DB (nb users, CRI, photos, logs) |
-| GET | `/users` | ❌ | Liste tous les utilisateurs |
-| GET | `/test-write` | ❌ | Test d'écriture DB |
+| GET | `/live` | ❌ | Liveness probe (toujours 200) — sonde Docker et monitoring externe |
+| GET | `/` | Admin | Readiness : DB, latence, disque, mémoire (200 OK / 503 si KO) |
+| GET | `/stats` | Admin | Compteurs DB (users, CRI, photos, logs, CRI par statut) |
+
+> `/users` et `/test-write` ont été supprimés (phase 1.1 du plan de remédiation) : ils
+> servaient l'annuaire complet des utilisateurs sans authentification. `/stats` n'expose
+> plus `recentCris` (noms de clients).
 
 ---
 
