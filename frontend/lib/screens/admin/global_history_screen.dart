@@ -17,6 +17,7 @@ import 'package:novadis_cri/core/constants/permissions.dart';
 import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 import 'package:novadis_cri/features/auth/presentation/providers/permissions_provider.dart';
 import 'package:novadis_cri/features/history/widgets/cri_details_dialog.dart';
+import 'package:novadis_cri/features/history/widgets/sync_failure_notice.dart';
 
 /// Historique global - tous les CRI de tous les techniciens (admin uniquement)
 class GlobalHistoryScreen extends ConsumerStatefulWidget {
@@ -361,13 +362,23 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
     );
     if (confirmed != true || !mounted) return;
     final db = ref.read(appDatabaseProvider);
+    final id = cri['id'].toString();
     final type = cri['_criType'] ?? 'service';
     if (type == 'projet') {
       await db.deleteCriProjet(cri['id']);
     } else {
       await db.deleteCriService(cri['id']);
     }
-    _loadData();
+
+    // `saveDraft()` pousse aussi le brouillon côté serveur : sans cet appel il
+    // y survit et continue d'alimenter les compteurs et l'accueil.
+    try {
+      await ref.read(criRemoteRepositoryProvider).deleteCri(id);
+    } catch (e) {
+      debugPrint('Suppression serveur du brouillon $id échouée: $e');
+    }
+
+    if (mounted) _loadData();
   }
 
   void _onStatusFilterChanged(String filter) {
@@ -459,6 +470,11 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(themeAnimationProvider);
+    // Idem historique personnel : recharger quand le SyncService a repoussé
+    // des CRI en arrière-plan (l'écran vit dans un IndexedStack).
+    ref.listen<int>(syncTickProvider, (_, __) {
+      if (mounted) _loadData();
+    });
     final sortedCris = _sortedCris;
     final total = sortedCris.length;
     final signed =
@@ -1076,6 +1092,8 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
     final hasSigned = cri['clientSignature'] != null;
     final isDraft = cri['_isDraft'] == true;
     final isPending = cri['_isPending'] == true;
+    // Refus serveur définitif sur ce CRI, s'il y en a un.
+    final syncFailure = ref.watch(syncFailuresProvider)[cri['id']?.toString()];
 
     final currentUserId = ref.read(userIdProvider);
     final criOwnerId = cri['technicianId']?.toString();
@@ -1179,7 +1197,9 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
                       ),
                     ),
                     _buildStatusBadge(hasSigned,
-                        isDraft: isDraft, isPending: isPending),
+                        isDraft: isDraft,
+                        isPending: isPending,
+                        syncFailure: syncFailure),
                     if (isDraft) ...[
                       const SizedBox(width: AppTheme.space4),
                       SizedBox(
@@ -1284,12 +1304,19 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
   }
 
   Widget _buildStatusBadge(bool hasSigned,
-      {bool isDraft = false, bool isPending = false}) {
+      {bool isDraft = false,
+      bool isPending = false,
+      String? syncFailure}) {
     final Color color;
     final Color bgColor;
     final String label;
     final IconData iconData;
-    if (isPending) {
+    if (isPending && syncFailure != null) {
+      color = AppTheme.error;
+      bgColor = AppTheme.errorLight;
+      label = 'Sync. refusée';
+      iconData = Icons.sync_problem_rounded;
+    } else if (isPending) {
       color = AppTheme.info;
       bgColor = AppTheme.infoLight;
       label = 'Non synchronisé';
@@ -1311,29 +1338,39 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
       iconData = Icons.pending_rounded;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.space8,
-        vertical: 3,
-      ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(iconData, size: 13, color: color),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color,
+    // Badge cliquable quand il signale un refus serveur, pour en donner le motif.
+    return GestureDetector(
+      onTap: syncFailure == null
+          ? null
+          : () => showSyncFailureDialog(context, ref, reason: syncFailure),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space8,
+          vertical: 3,
+        ),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(iconData, size: 13, color: color),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
-          ),
-        ],
+            if (syncFailure != null) ...[
+              const SizedBox(width: 3),
+              Icon(Icons.info_outline_rounded, size: 12, color: color),
+            ],
+          ],
+        ),
       ),
     );
   }

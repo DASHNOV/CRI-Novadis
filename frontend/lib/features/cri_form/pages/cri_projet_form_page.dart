@@ -11,6 +11,7 @@ import 'package:novadis_cri/features/cri_form/controllers/cri_projet_controller.
 import 'package:novadis_cri/features/cri_form/widgets/photo_picker.dart';
 import 'package:novadis_cri/features/cri_form/widgets/rich_markdown_field.dart';
 import 'package:novadis_cri/features/cri_form/widgets/signature_pad.dart';
+import 'package:novadis_cri/features/cri_form/widgets/technician_field.dart';
 import 'package:novadis_cri/services/user_api_service.dart';
 import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 import 'package:novadis_cri/data/models/site_model.dart';
@@ -1277,25 +1278,10 @@ class _CriProjetFormPageState extends ConsumerState<CriProjetFormPage> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  FormBuilderTextField(
+                  TechnicianField(
                     name: 'technicianName_$index',
-                    initialValue: index < names.length ? names[index] : '',
-                    decoration: const InputDecoration(
-                      hintText: 'Nom du technicien',
-                      prefixIcon: Icon(Icons.person),
-                      helperText: 'Format: Prénom Nom',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Nom du technicien requis';
-                      }
-                      if (index == 0 && state.knownTechnicians.isNotEmpty &&
-                          !state.knownTechnicians
-                              .any((t) => t.toLowerCase() == value.trim().toLowerCase())) {
-                        return 'Technicien "$value" inconnu. Vérifiez le nom (Prénom Nom)';
-                      }
-                      return null;
-                    },
+                    value: index < names.length ? names[index] : '',
+                    knownTechnicians: state.knownTechnicians,
                     onChanged: (value) {
                       ref.read(criProjetFormProvider.notifier).updateTechnicianInfo(technicianName: value, index: index);
                     },

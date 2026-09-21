@@ -13,6 +13,7 @@ import 'package:novadis_cri/features/cri_form/widgets/photo_picker.dart';
 import 'package:novadis_cri/features/cri_form/widgets/preventive_template_sheet.dart';
 import 'package:novadis_cri/features/cri_form/widgets/rich_markdown_field.dart';
 import 'package:novadis_cri/features/cri_form/widgets/signature_pad.dart';
+import 'package:novadis_cri/features/cri_form/widgets/technician_field.dart';
 import 'package:novadis_cri/services/user_api_service.dart';
 import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 import 'package:novadis_cri/data/models/site_model.dart';
@@ -1452,14 +1453,10 @@ class _CriServiceFormPageState extends ConsumerState<CriServiceFormPage> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  FormBuilderTextField(
+                  TechnicianField(
                     name: 'technicianName_$index',
-                    initialValue: index < names.length ? names[index] : '',
-                    decoration: const InputDecoration(
-                      hintText: 'Nom du technicien',
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    validator: FormBuilderValidators.required(errorText: 'Nom requis'),
+                    value: index < names.length ? names[index] : '',
+                    knownTechnicians: state.knownTechnicians,
                     onChanged: (value) {
                       ref.read(criServiceFormProvider.notifier).updateTechnicianName(value, index: index);
                     },

@@ -5,6 +5,7 @@ import 'package:novadis_cri/data/local/app_database.dart';
 import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 import 'package:novadis_cri/data/local/tables/cri_service_table.dart';
 import 'package:novadis_cri/core/utils/cri_reference.dart';
+import 'package:novadis_cri/core/network/api_exception.dart';
 
 /// État du formulaire CRI Service
 class CriServiceFormState {
@@ -14,6 +15,7 @@ class CriServiceFormState {
   final String? errorMessage;
   final bool isDirty;
   final DateTime? lastAutoSave;
+  final List<String> knownTechnicians;
 
   const CriServiceFormState({
     this.currentCri,
@@ -22,6 +24,7 @@ class CriServiceFormState {
     this.errorMessage,
     this.isDirty = false,
     this.lastAutoSave,
+    this.knownTechnicians = const [],
   });
 
   CriServiceFormState copyWith({
@@ -31,6 +34,7 @@ class CriServiceFormState {
     String? errorMessage,
     bool? isDirty,
     DateTime? lastAutoSave,
+    List<String>? knownTechnicians,
   }) {
     return CriServiceFormState(
       currentCri: currentCri ?? this.currentCri,
@@ -39,6 +43,7 @@ class CriServiceFormState {
       errorMessage: errorMessage,
       isDirty: isDirty ?? this.isDirty,
       lastAutoSave: lastAutoSave ?? this.lastAutoSave,
+      knownTechnicians: knownTechnicians ?? this.knownTechnicians,
     );
   }
 }
@@ -60,6 +65,17 @@ class CriServiceFormNotifier extends StateNotifier<CriServiceFormState> {
       technicianName: technicianName,
     );
     state = CriServiceFormState(currentCri: newCri, isDirty: false);
+    loadTechnicians();
+  }
+
+  /// Charge la liste des techniciens connus (alimente la liste déroulante
+  /// « Techniciens intervenants »). Best-effort : hors ligne la liste reste
+  /// vide et le champ retombe en saisie libre.
+  Future<void> loadTechnicians() async {
+    final technicians = await _remoteRepo.getTechnicians();
+    if (technicians.isNotEmpty) {
+      state = state.copyWith(knownTechnicians: technicians);
+    }
   }
 
   /// Charge un CRI existant
@@ -72,6 +88,7 @@ class CriServiceFormNotifier extends StateNotifier<CriServiceFormState> {
           currentCri: CriServiceModel.fromDb(dbCri),
           isLoading: false,
         );
+        loadTechnicians();
         return;
       }
 
@@ -80,6 +97,7 @@ class CriServiceFormNotifier extends StateNotifier<CriServiceFormState> {
       final remote = await _remoteRepo.fetchCriById(id);
       if (remote is CriServiceModel) {
         state = state.copyWith(currentCri: remote, isLoading: false);
+        loadTechnicians();
       } else {
         state = state.copyWith(
           isLoading: false,
@@ -406,13 +424,18 @@ class CriServiceFormNotifier extends StateNotifier<CriServiceFormState> {
         submittedCri = submittedCri.copyWith(syncStatus: 'synced');
         await _db.updateCriService(submittedCri.toDb());
       } catch (e) {
-        // Marqué pending → repoussé automatiquement par SyncService
+        // Marqué pending → repoussé automatiquement par SyncService.
+        // Un refus du serveur (validation, droits) ne repartira pas tout
+        // seul : annoncer « pas de réseau » enverrait le technicien
+        // attendre en vain une synchronisation qui n'arrivera jamais.
+        final permanent = e is ApiException && e.isPermanent;
         state = state.copyWith(
           currentCri: submittedCri,
           isSaving: false,
           isDirty: false,
-          errorMessage:
-              'Pas de réseau : CRI enregistré sur l\'appareil. Il sera envoyé au serveur automatiquement dès le retour de la connexion.',
+          errorMessage: permanent
+              ? 'CRI enregistré sur cet appareil, mais refusé par le serveur : $e. Corrigez-le, puis relancez la synchronisation depuis « Mes CRI ».'
+              : 'Pas de réseau : CRI enregistré sur l\'appareil. Il sera envoyé au serveur automatiquement dès le retour de la connexion.',
         );
         return true;
       }

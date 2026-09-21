@@ -8,6 +8,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:novadis_cri/models/personal_stats.dart';
 import 'package:novadis_cri/models/daily_activity.dart';
 import 'package:novadis_cri/services/stats_api_service.dart';
+import 'package:novadis_cri/services/sync_service.dart';
 import 'package:novadis_cri/features/cri_form/pages/cri_projet_form_page.dart';
 import 'package:novadis_cri/features/cri_form/pages/cri_service_form_page.dart';
 
@@ -105,6 +106,11 @@ class _PersonalHomeScreenState extends ConsumerState<PersonalHomeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(themeAnimationProvider);
+    // Les compteurs et « Brouillons à compléter » viennent du serveur :
+    // les rafraîchir dès qu'une passe de synchronisation a abouti.
+    ref.listen<int>(syncTickProvider, (_, __) {
+      if (mounted) _loadData();
+    });
     final now = DateTime.now();
     final dateStr = DateFormat('EEEE d MMMM yyyy', 'fr_FR').format(now);
     final userName = ref.watch(userNameProvider);

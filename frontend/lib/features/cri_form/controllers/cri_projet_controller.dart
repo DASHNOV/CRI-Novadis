@@ -6,6 +6,7 @@ import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 import 'package:novadis_cri/data/local/tables/cri_projet_table.dart';
 import 'package:novadis_cri/features/auth/presentation/providers/user_name_provider.dart';
 import 'package:novadis_cri/core/utils/cri_reference.dart';
+import 'package:novadis_cri/core/network/api_exception.dart';
 
 /// État du formulaire CRI Projet
 class CriProjetFormState {
@@ -371,13 +372,18 @@ class CriProjetFormNotifier extends StateNotifier<CriProjetFormState> {
         submittedCri = submittedCri.copyWith(syncStatus: 'synced');
         await _db.updateCriProjet(submittedCri.toDb());
       } catch (e) {
-        // Marqué pending → repoussé automatiquement par SyncService
+        // Marqué pending → repoussé automatiquement par SyncService.
+        // Un refus du serveur (validation, droits) ne repartira pas tout
+        // seul : annoncer « pas de réseau » enverrait le technicien
+        // attendre en vain une synchronisation qui n'arrivera jamais.
+        final permanent = e is ApiException && e.isPermanent;
         state = state.copyWith(
           currentCri: submittedCri,
           isSaving: false,
           isDirty: false,
-          errorMessage:
-              'Pas de réseau : CRI enregistré sur l\'appareil. Il sera envoyé au serveur automatiquement dès le retour de la connexion.',
+          errorMessage: permanent
+              ? 'CRI enregistré sur cet appareil, mais refusé par le serveur : $e. Corrigez-le, puis relancez la synchronisation depuis « Mes CRI ».'
+              : 'Pas de réseau : CRI enregistré sur l\'appareil. Il sera envoyé au serveur automatiquement dès le retour de la connexion.',
         );
         return true;
       }

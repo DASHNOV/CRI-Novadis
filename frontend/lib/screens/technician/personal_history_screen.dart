@@ -8,7 +8,9 @@ import 'package:novadis_cri/core/providers/main_nav_provider.dart';
 import 'package:novadis_cri/core/widgets/content_container.dart';
 import 'package:novadis_cri/data/local/app_database.dart';
 import 'package:novadis_cri/data/models/cri_model.dart';
+import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 import 'package:novadis_cri/features/history/widgets/cri_details_dialog.dart';
+import 'package:novadis_cri/features/history/widgets/sync_failure_notice.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/core/theme/responsive.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -242,6 +244,51 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
     return pending;
   }
 
+  /// Supprime un brouillon : base locale **et** copie serveur. `saveDraft()`
+  /// pousse le brouillon sur le serveur dès qu'il y a du réseau — une
+  /// suppression purement locale le laissait dans « Brouillons à compléter »
+  /// de l'accueil (alimenté par le serveur) et dans les compteurs.
+  Future<void> _deleteDraft(Map<String, dynamic> cri) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer le brouillon'),
+        content: const Text(
+            'Ce brouillon sera définitivement supprimé. Cette action est irréversible.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.error),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final id = cri['id'].toString();
+    final db = ref.read(appDatabaseProvider);
+    if ((cri['_criType'] ?? 'service') == 'projet') {
+      await db.deleteCriProjet(id);
+    } else {
+      await db.deleteCriService(id);
+    }
+
+    // Best-effort : hors ligne la copie serveur (si elle existe) survit, mais
+    // le brouillon local est bien parti — ne pas bloquer la suppression.
+    try {
+      await ref.read(criRemoteRepositoryProvider).deleteCri(id);
+    } catch (e) {
+      debugPrint('Suppression serveur du brouillon $id échouée: $e');
+    }
+
+    if (mounted) _loadCRIs();
+  }
+
   void _onFilterChanged(String filter) {
     setState(() => _selectedFilter = filter);
     _loadCRIs();
@@ -263,6 +310,11 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(themeAnimationProvider);
+    // Un CRI repoussé en arrière-plan par le SyncService doit perdre son badge
+    // « Non synchronisé » sans attendre un pull-to-refresh.
+    ref.listen<int>(syncTickProvider, (_, __) {
+      if (mounted) _loadCRIs();
+    });
     final isDesktop = Responsive.isDesktopOrLarger(context);
     final filtered = _filteredCris;
 
@@ -650,12 +702,21 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
         : '';
     final hasSigned = cri['clientSignature'] != null;
 
+    // Refus serveur définitif sur ce CRI, s'il y en a un : le badge « Non
+    // synchronisé » laisserait croire à une simple attente de réseau.
+    final syncFailure = ref.watch(syncFailuresProvider)[cri['id']?.toString()];
+
     // Status badge config
     final String statusLabel;
     final Color statusColor;
     final Color statusBg;
     final IconData statusIcon;
-    if (isPending) {
+    if (isPending && syncFailure != null) {
+      statusLabel = 'Sync. refusée';
+      statusColor = AppTheme.error;
+      statusBg = AppTheme.errorLight;
+      statusIcon = Icons.sync_problem_rounded;
+    } else if (isPending) {
       statusLabel = 'Non synchronisé';
       statusColor = AppTheme.info;
       statusBg = AppTheme.infoLight;
@@ -748,32 +809,65 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          // Status pill
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusBg,
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusFull),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(statusIcon,
-                                    size: 13, color: statusColor),
-                                const Gap(4),
-                                Text(
-                                  statusLabel,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: statusColor,
+                          // Status pill — cliquable quand elle signale un refus
+                          // serveur, pour en donner le motif.
+                          GestureDetector(
+                            onTap: syncFailure == null
+                                ? null
+                                : () => showSyncFailureDialog(context, ref,
+                                    reason: syncFailure),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusBg,
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusFull),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(statusIcon,
+                                      size: 13, color: statusColor),
+                                  const Gap(4),
+                                  Text(
+                                    statusLabel,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: statusColor,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  if (syncFailure != null) ...[
+                                    const Gap(3),
+                                    Icon(Icons.info_outline_rounded,
+                                        size: 12, color: statusColor),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
+                          // Suppression d'un brouillon — réservée aux
+                          // brouillons : un CRI soumis non synchronisé n'existe
+                          // pas encore côté serveur, le supprimer perdrait
+                          // l'intervention.
+                          if (isDraft) ...[
+                            const Gap(4),
+                            SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                  color: AppTheme.error,
+                                ),
+                                tooltip: 'Supprimer le brouillon',
+                                onPressed: () => _deleteDraft(cri),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const Gap(8),

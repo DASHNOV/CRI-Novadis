@@ -3,6 +3,7 @@ import 'dart:io' show File;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:novadis_cri/core/network/api_exception.dart';
 import 'package:novadis_cri/core/network/dio_provider.dart';
 import 'package:novadis_cri/data/models/cri_photo_model.dart';
 import 'package:novadis_cri/data/models/cri_projet_model.dart';
@@ -210,15 +211,9 @@ class CriRemoteRepository {
     }
   }
 
-  String _handleError(DioException e) {
-    if (e.response != null && e.response?.data != null) {
-      final data = e.response?.data;
-      if (data is Map && data.containsKey('message')) {
-        return data['message'];
-      }
-    }
-    return 'Erreur de communication avec le serveur';
-  }
+  /// Conserve le code HTTP en plus du message : la synchronisation en a besoin
+  /// pour séparer un échec réseau (réessayable) d'un refus serveur (définitif).
+  ApiException _handleError(DioException e) => ApiException.fromDio(e);
 
   /// Upload des photos vers le serveur après soumission d'un CRI (mobile uniquement).
   Future<void> uploadPhotos(String criId, List<String> localPaths) async {

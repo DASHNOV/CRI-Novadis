@@ -18,6 +18,58 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-09-21] Brouillons non supprimables par les techniciens + badge « Non synchronisé » figé au retour du réseau
+
+Deux signalements terrain distincts, même racine d'analyse : l'écran technicien n'a jamais été aligné sur l'écran admin, et rien ne recharge une liste déjà construite.
+
+### A. Icône poubelle absente chez les techniciens
+- **Symptôme** : plusieurs techniciens ne peuvent pas supprimer leurs brouillons — aucune icône de suppression sur leurs cartes. Le problème ne se reproduit pas pour un compte admin.
+- **Cause** : la suppression n'existait que dans `screens/admin/global_history_screen.dart` (`_buildGlobalCriCard`, boutons `_deleteDraft` / `_deleteRemoteCri`). `screens/technician/personal_history_screen.dart` (`_buildCriCard`, onglet « Mes CRI ») n'a **jamais** eu de bouton de suppression — seulement un chevron. Rien à voir avec un rôle, une permission ou la taille d'écran : les deux écrans sont deux implémentations parallèles de la même carte, et la fonctionnalité n'a été ajoutée que d'un côté. L'accueil (`personal_home_screen.dart`, « Brouillons à compléter ») n'en a pas non plus.
+- **Correctif** : `_deleteDraft` + bouton `IconButton` (affiché si `isDraft`) dans `personal_history_screen.dart`, calqués sur la version admin. La suppression vise **local + serveur** : `saveDraft()` pousse le brouillon côté serveur dès qu'il y a du réseau, or l'accueil lit ses brouillons depuis le serveur (`getPersonalCRIs(filter: 'in_progress')`) alors que « Mes CRI » les lit en base locale — supprimer uniquement en local faisait réapparaître le brouillon dans les compteurs. `DELETE /CRI/{id}` est autorisé au propriétaire (`CRIController.DeleteCRI`). L'appel distant est *best-effort* (hors ligne, le local part quand même). Même correction appliquée à l'admin, qui ne supprimait qu'en local.
+- **Prévention** : **`personal_history_screen.dart` et `global_history_screen.dart` sont deux copies de la même carte CRI** — toute fonctionnalité ajoutée à l'une doit être répliquée dans l'autre ou factorisée dans un widget partagé (même règle que pour les deux pages de formulaire Service/Projet, cf. entrée du même jour). Corollaire : **une entité qui vit en deux exemplaires (base locale + serveur) se supprime des deux côtés** — sinon la copie survivante revient par l'écran qui lit l'autre source.
+
+### B. Statut « Non synchronisé » qui ne retombe pas au retour de la connexion
+- **Symptôme** : un CRI soumis hors ligne garde son badge « Non synchronisé » alors que le réseau est revenu ; il ne bascule qu'après un pull-to-refresh manuel ou un redémarrage de l'app.
+- **Cause** : deux défauts cumulés.
+  1. **Rien ne recharge les listes.** `SyncService.syncPendingCris()` met bien la ligne locale à `syncStatus: 'synced'`, mais les écrans (`personal_history_screen`, `personal_home_screen`, `global_history_screen`) chargent leurs données dans `initState` **uniquement**. Ils vivent dans un `IndexedStack` (`core/widgets/responsive_scaffold.dart`) : changer d'onglet ne reconstruit pas l'écran, `initState` ne rejoue pas. L'état affiché était donc un instantané figé, correct en base et faux à l'écran. `pendingCriCountProvider` existait mais n'était lu par personne.
+  2. **Une seule tentative, jamais rejouée.** Les déclencheurs étaient le démarrage de l'app et `onConnectivityChanged`. Or (a) un événement de connectivité signale l'interface réseau montée, pas une route utilisable — une passe déclenchée à cet instant échoue souvent (DNS/route pas prêts), et plus rien ne la rejouait ; (b) l'OS ne délivre pas ces événements à une app en arrière-plan, donc un réseau revenu pendant que le téléphone dormait n'était vu par personne.
+- **Correctif** (`services/sync_service.dart`) :
+  - `syncTickProvider` (`StateProvider<int>`) incrémenté à chaque passe ayant synchronisé ≥ 1 CRI ; les trois écrans l'écoutent via `ref.listen` dans `build` et rechargent.
+  - `SyncService with WidgetsBindingObserver` → passe de synchronisation au retour de l'app au premier plan (`AppLifecycleState.resumed`).
+  - Relance périodique (`Timer.periodic`, 2 min) qui ne part que s'il reste des CRI en attente (`_syncIfPending`), avec recul exponentiel après échecs consécutifs (plafond ≈ 32 min), remis à zéro au changement de réseau, au retour au premier plan et à la première réussite — un CRI durablement refusé par le serveur ne doit pas repartir toutes les 2 min avec ses signatures et ses photos.
+  - Délai de grâce de 3 s après un événement « connecté » avant la première tentative.
+- **Prévention** :
+  - **Un écran dans un `IndexedStack` ne se recharge jamais seul** : toute donnée modifiée par un service en arrière-plan doit être poussée par un provider écouté (`ref.listen` / `watch`), jamais supposée relue au changement d'onglet. Ne pas confondre « la base est à jour » et « l'écran est à jour ».
+  - **Un événement de connectivité n'est pas une preuve d'accès réseau** : toujours prévoir une relance après échec, jamais une tentative unique sur événement.
+  - **Tout mécanisme de rattrapage doit avoir un déclencheur sur `AppLifecycleState.resumed`** : sur mobile, les événements système ne parviennent pas à une app en arrière-plan.
+  - Tout réessai automatique sur données volumineuses (signatures, photos) doit être borné par un recul exponentiel.
+
+### C. Motif d'un refus serveur invisible (corollaire de B)
+- **Symptôme** : un CRI refusé par le serveur pour son *contenu* (champ hors format, droits insuffisants) reste « Non synchronisé » indéfiniment. Le technicien attend un retour de réseau qui ne changera rien, et le motif ne part qu'en `debugPrint` — invisible en production. Pire, le message affiché à la soumission annonçait « Pas de réseau » dans ce cas aussi.
+- **Cause** : `CriRemoteRepository._handleError` renvoyait une **`String`**. Le message survivait, le **code HTTP disparaissait** — impossible pour le `SyncService` de distinguer « le réseau n'est pas là, ça repartira » de « le serveur a refusé, ça ne repartira jamais ». Les deux cas étaient traités comme un échec réseau.
+- **Correctif** :
+  - `core/network/api_exception.dart` (nouveau) : `ApiException` porte `message` **et** `statusCode`, avec `isPermanent` = 4xx sauf `401` (l'intercepteur Dio rafraîchit le jeton et rejoue), `408` et `429` (réessayables). `toString()` renvoie le message brut, les écrans qui interpolent `'Erreur: $e'` sont inchangés. Couvert par `test/core/api_exception_test.dart`.
+  - `SyncService` : `syncFailuresProvider` (`Map<criId, motif>`, en mémoire) alimenté aux seuls échecs définitifs et purgé à la réussite **ou à un échec réseau** — un échec réseau ne dit rien du contenu, laisser l'ancien motif affiché induirait en erreur. `retryNow()` pour le réessai manuel (court-circuite le recul exponentiel).
+  - Cartes d'historique (les deux écrans) : badge « Sync. refusée » rouge + icône d'info à la place de « Non synchronisé », cliquable → `showSyncFailureDialog` (`features/history/widgets/sync_failure_notice.dart`, **partagé** entre les deux écrans) avec le motif serveur et un bouton « Réessayer ».
+  - Les deux contrôleurs de formulaire distinguent le refus définitif du simple hors-ligne dans le message de soumission.
+- **Prévention** : **un dépôt ne doit jamais aplatir une erreur HTTP en `String`** — le code de statut est l'information qui décide du comportement en aval (réessayer ou non, afficher ou non). Corollaire : **tout mécanisme de rattrapage silencieux doit avoir une sortie visible** ; une file d'attente qui échoue sans jamais rien dire est indiscernable d'une file qui progresse. `stats_api_service.dart` et `auth_service.dart` ont toujours leur propre `_handleError` renvoyant une `String` — à basculer sur `ApiException` au prochain passage.
+
+## [2026-09-21] CRI Projet impossible à soumettre — nom du technicien en saisie libre, contrôlé d'un seul côté
+- **Symptôme** : un technicien soumet ses CRI Service sans problème, mais ses CRI Projet restent bloqués à la validation du formulaire — aucun `POST /CRI`, donc CRI absent de « Tous les CRI » **et** de la liste d'export PDF (`Documents` → « Exporter CRI en PDF »). Aucune erreur serveur : le blocage est purement côté formulaire.
+- **Cause** : le champ « Techniciens intervenants » était un `FormBuilderTextField` **en saisie libre** dans les deux formulaires, mais validé de façon **asymétrique** :
+  - `cri_projet_form_page.dart` : liste blanche à **comparaison exacte** (`toLowerCase()` + `trim()` seulement) contre `state.knownTechnicians` (issu de `GET /Users/technicians`, format `Prénom Nom`) → `Nom Prénom` refusé avec « Technicien "X" inconnu ».
+  - `cri_service_form_page.dart` : `FormBuilderValidators.required` seul → n'importe quelle chaîne passait.
+  L'inversion vient de la divergence entre les **deux sources du nom**, qui utilisent pourtant le même ordre dans le code : la liste de référence (`getTechnicians()`, `cri_remote_repository.dart`) est lue en direct, alors que le préremplissage (`currentTechnicianNameProvider` → `userNameProvider`) sort du **secure storage écrit au login** (`auth_service.dart`). Nom/prénom corrigés ou permutés dans la table `Users` après la dernière connexion → le cache reste périmé jusqu'au prochain `logout`/`login`, une mise à jour de l'app ne le purge pas.
+- **Correctif** :
+  - `features/cri_form/widgets/technician_field.dart` (nouveau) : `TechnicianField`, liste déroulante (`FormBuilderDropdown<String>`) alimentée par `knownTechnicians`. Plus de saisie libre → l'ordre du nom ne peut plus diverger. Valeur courante absente de la liste (CRI antérieur, technicien désactivé) ajoutée comme option pour ne rien perdre et éviter l'assertion du `Dropdown`. Repli en `FormBuilderTextField` quand la liste est vide (hors ligne).
+  - `cri_service_controller.dart` : ajout de `knownTechnicians` à l'état + `loadTechnicians()`, appelé dans `initNewForm` et les deux branches de `loadCri` — le formulaire Service n'avait aucune liste de référence.
+  - Les deux pages de formulaire utilisent `TechnicianField` ; la liste blanche à comparaison exacte du Projet est supprimée (devenue inutile).
+- **Prévention** :
+  - **Ne jamais valider une saisie libre contre une liste serveur par égalité de chaînes** : proposer la liste (dropdown / autocomplete) plutôt que rejeter après coup.
+  - **Un même champ métier doit avoir le même niveau de validation dans les deux formulaires** (Service / Projet). Toute règle ajoutée d'un côté est à répliquer ou à factoriser dans un widget partagé — ces deux pages divergent facilement.
+  - **Une identité mise en cache au login est périmée par nature** : la rafraîchir depuis `GET /Users/me`, ou ne jamais s'en servir comme clé de comparaison. (Non fait ici — le dropdown rend le point sans effet sur ce champ, mais `userNameProvider` reste alimenté par le cache du login.)
+  - Corollaire d'exploitation : un CRI invisible dans les listes n'a pas forcément échoué à la synchro — **vérifier d'abord qu'il a été soumis**, le formulaire peut n'avoir jamais validé.
+
 ## [2026-09-07] Migrations écrites à la main, invisibles pour EF — base neuve inexploitable
 
 - **Symptôme** : aucun en production, et c'est ce qui rend le défaut redoutable. Au déploiement, l'API journalisait `Applying pending database migrations...` puis `Database migrations applied successfully` — sur un travail **nul**. La colonne `Priority` restait en base malgré une migration censée la supprimer. `dotnet ef migrations list` ne renvoyait qu'`InitialCreate`, alors que `Data/Migrations/` contenait trois fichiers.
