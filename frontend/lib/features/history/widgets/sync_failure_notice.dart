@@ -9,12 +9,17 @@ import 'package:novadis_cri/services/sync_service.dart';
 ///
 /// N'est proposé que pour un échec **définitif** : un CRI qui attend
 /// simplement le réseau n'a pas de motif à montrer, il repartira tout seul.
+///
+/// [onEdit] ouvre le CRI dans le formulaire pour corriger la cause du refus.
+/// Sans lui, le dialogue invitait à « corriger depuis le formulaire » sans
+/// offrir le moindre chemin pour y arriver.
 Future<void> showSyncFailureDialog(
   BuildContext context,
   WidgetRef ref, {
   required String reason,
+  VoidCallback? onEdit,
 }) async {
-  final retry = await showDialog<bool>(
+  final action = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Row(
@@ -51,8 +56,12 @@ Future<void> showSyncFailureDialog(
           ),
           const SizedBox(height: AppTheme.space12),
           Text(
-            'Corrigez le CRI depuis le formulaire, ou transmettez ce message '
-            'au support si le motif n\'est pas clair.',
+            onEdit != null
+                ? 'Utilisez « Modifier » pour corriger le CRI et le '
+                    'resoumettre, ou transmettez ce message au support si le '
+                    'motif n\'est pas clair.'
+                : 'Corrigez le CRI depuis le formulaire, ou transmettez ce '
+                    'message au support si le motif n\'est pas clair.',
             style: TextStyle(
               fontSize: 12,
               color: AppTheme.textSecondary,
@@ -62,18 +71,29 @@ Future<void> showSyncFailureDialog(
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
+          onPressed: () => Navigator.pop(ctx, 'close'),
           child: const Text('Fermer'),
         ),
+        if (onEdit != null)
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'edit'),
+            child: const Text('Modifier'),
+          ),
         TextButton(
-          onPressed: () => Navigator.pop(ctx, true),
+          onPressed: () => Navigator.pop(ctx, 'retry'),
           child: const Text('Réessayer'),
         ),
       ],
     ),
   );
 
-  if (retry != true || !context.mounted) return;
+  if (!context.mounted) return;
+
+  if (action == 'edit') {
+    onEdit?.call();
+    return;
+  }
+  if (action != 'retry') return;
 
   final synced = await ref.read(syncServiceProvider).retryNow();
   if (!context.mounted) return;

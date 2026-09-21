@@ -1131,7 +1131,9 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
                 criOwnerId != null &&
                 currentUserId == criOwnerId;
             // Un CRI déjà soumis n'est modifiable que par son propriétaire.
-            final canEdit = canToggle;
+            // Un CRI non synchronisé, lui, n'existe que sur cet appareil :
+            // il n'a pas de propriétaire côté serveur à comparer.
+            final canEdit = canToggle || isPending;
 
             final criModel = CriModel(
               id: cri['id'].toString(),
@@ -1199,7 +1201,27 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
                     _buildStatusBadge(hasSigned,
                         isDraft: isDraft,
                         isPending: isPending,
-                        syncFailure: syncFailure),
+                        syncFailure: syncFailure,
+                        onEdit: () => _editPendingCri(cri)),
+                    if (isPending) ...[
+                      const SizedBox(width: AppTheme.space4),
+                      SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            size: 18,
+                            color: syncFailure != null
+                                ? AppTheme.error
+                                : AppTheme.primaryContent,
+                          ),
+                          tooltip: 'Modifier et renvoyer',
+                          onPressed: () => _editPendingCri(cri),
+                        ),
+                      ),
+                    ],
                     if (isDraft) ...[
                       const SizedBox(width: AppTheme.space4),
                       SizedBox(
@@ -1303,10 +1325,22 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
     );
   }
 
+  /// Ouvre un CRI soumis mais resté en local (« Non synchronisé » /
+  /// « Sync. refusée ») dans le formulaire pour le corriger puis le
+  /// resoumettre. Pendant judicieux du même bouton dans « Mes CRI » : les deux
+  /// écrans affichent la même carte et ne doivent pas diverger.
+  void _editPendingCri(Map<String, dynamic> cri) {
+    final type = cri['_criType'] ?? 'service';
+    context.push('/cri/edit/${cri['id']}?type=$type').then((_) {
+      if (mounted) _loadData();
+    });
+  }
+
   Widget _buildStatusBadge(bool hasSigned,
       {bool isDraft = false,
       bool isPending = false,
-      String? syncFailure}) {
+      String? syncFailure,
+      VoidCallback? onEdit}) {
     final Color color;
     final Color bgColor;
     final String label;
@@ -1342,7 +1376,8 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
     return GestureDetector(
       onTap: syncFailure == null
           ? null
-          : () => showSyncFailureDialog(context, ref, reason: syncFailure),
+          : () => showSyncFailureDialog(context, ref,
+              reason: syncFailure, onEdit: onEdit),
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.space8,

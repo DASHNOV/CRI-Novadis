@@ -289,6 +289,20 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
     if (mounted) _loadCRIs();
   }
 
+  /// Ouvre un CRI soumis mais resté en local (« Non synchronisé » /
+  /// « Sync. refusée ») dans le formulaire pour le corriger puis le
+  /// resoumettre. Le CRI existe déjà en base locale : le formulaire le
+  /// recharge par son id et `submit()` le repousse avec le contenu corrigé.
+  ///
+  /// Réservé aux CRI encore en attente : un CRI déjà accepté par le serveur
+  /// passe par la fiche détail, qui applique les droits de propriété.
+  void _editPendingCri(Map<String, dynamic> cri) {
+    final type = cri['_criType'] ?? 'service';
+    context.push('/cri/edit/${cri['id']}?type=$type').then((_) {
+      if (mounted) _loadCRIs();
+    });
+  }
+
   void _onFilterChanged(String filter) {
     setState(() => _selectedFilter = filter);
     _loadCRIs();
@@ -780,6 +794,10 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
                 onSignatureChanged: _loadCRIs,
                 // Un CRI non synchronisé n'existe pas encore côté serveur
                 canToggleSignature: !isPending,
+                // ... mais il reste modifiable localement pour corriger ce qui
+                // bloque sa synchronisation.
+                canEdit: isPending,
+                onEdit: () => _editPendingCri(cri),
               ),
             );
           },
@@ -815,7 +833,8 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
                             onTap: syncFailure == null
                                 ? null
                                 : () => showSyncFailureDialog(context, ref,
-                                    reason: syncFailure),
+                                    reason: syncFailure,
+                                    onEdit: () => _editPendingCri(cri)),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
@@ -847,6 +866,28 @@ class _PersonalHistoryScreenState extends ConsumerState<PersonalHistoryScreen> {
                               ),
                             ),
                           ),
+                          // Correction d'un CRI resté en local : c'est le
+                          // seul moyen de débloquer une synchronisation
+                          // refusée pour son contenu.
+                          if (isPending) ...[
+                            const Gap(4),
+                            SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                icon: Icon(
+                                  Icons.edit_outlined,
+                                  size: 18,
+                                  color: syncFailure != null
+                                      ? AppTheme.error
+                                      : AppTheme.primaryContent,
+                                ),
+                                tooltip: 'Modifier et renvoyer',
+                                onPressed: () => _editPendingCri(cri),
+                              ),
+                            ),
+                          ],
                           // Suppression d'un brouillon — réservée aux
                           // brouillons : un CRI soumis non synchronisé n'existe
                           // pas encore côté serveur, le supprimer perdrait
