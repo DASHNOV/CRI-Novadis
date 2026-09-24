@@ -39,6 +39,40 @@ class AppRouter {
   /// Global navigator key — used by Dio interceptor to redirect on auth failure
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  /// Routes accessibles sans jeton.
+  static bool isPublic(String location) =>
+      location == login || location == verifyOtp;
+
+  /// Garde d'authentification : sans jeton, toute route non publique renvoie
+  /// vers l'écran de connexion, destination initiale conservée dans `from`.
+  /// Filet d'UX : sans lui, `/admin` ouvert directement affichait l'écran
+  /// (vide, l'API refusant les données) au lieu de la connexion.
+  static String? authRedirect({
+    required String location,
+    required Uri uri,
+    required bool isAuthenticated,
+  }) {
+    if (isAuthenticated || isPublic(location)) return null;
+    // Démarrage « à froid » : la destination par défaut n'a pas à être mémorisée.
+    final from = uri.toString();
+    if (from == '/' || from == home) return login;
+    return Uri(path: login, queryParameters: {'from': from}).toString();
+  }
+
+  /// Destination après connexion : `from` s'il désigne une route interne de
+  /// l'application, sinon l'accueil. Refuse `//hôte` et toute URL absolue,
+  /// pour qu'un lien piégé ne puisse pas renvoyer ailleurs.
+  static String afterLogin(String? from) {
+    if (from == null || !from.startsWith('/') || from.startsWith('//')) {
+      return home;
+    }
+    final uri = Uri.tryParse(from);
+    if (uri == null || uri.hasScheme || uri.hasAuthority || isPublic(uri.path)) {
+      return home;
+    }
+    return from;
+  }
+
   /// Permission requise pour ouvrir [location], `null` si la route est libre.
   /// Filet d'UX seulement : c'est l'API qui refuse réellement l'action.
   static String? requiredPermission(String location) {
@@ -60,23 +94,38 @@ class AppRouter {
     navigatorKey: navigatorKey,
     initialLocation: login,
     redirect: (context, state) async {
+      final storage = StorageService();
+      if (!isPublic(state.matchedLocation)) {
+        final token = await storage.getAccessToken();
+        final guard = authRedirect(
+          location: state.matchedLocation,
+          uri: state.uri,
+          isAuthenticated: token != null && token.isNotEmpty,
+        );
+        if (guard != null) return guard;
+      }
+
       final permission = requiredPermission(state.matchedLocation);
       if (permission == null) return null;
-      final role = await StorageService().getUserRole();
+      final role = await storage.getUserRole();
       return PermissionsService(role).hasPermission(permission) ? null : home;
     },
     routes: [
       GoRoute(
         path: login,
         name: 'login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) =>
+            LoginScreen(from: state.uri.queryParameters['from']),
       ),
       GoRoute(
         path: verifyOtp,
         name: 'verify-otp',
         builder: (context, state) {
           final email = state.uri.queryParameters['email'] ?? '';
-          return OtpVerificationScreen(email: email);
+          return OtpVerificationScreen(
+            email: email,
+            from: state.uri.queryParameters['from'],
+          );
         },
       ),
       // ─── Page d'accueil basée sur le rôle ───
