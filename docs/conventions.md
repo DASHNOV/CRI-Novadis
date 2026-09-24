@@ -272,24 +272,14 @@ Valeurs sensibles dans `.env` (jamais committé) — chargé via `DotNetEnv` au 
 
 Flux nominal : `feature/xxx` → `dev` (tests) → `main` (tests + déploiement).
 
-### Endpoints dev-only
+### Compilation conditionnelle et modèle EF
 
-Les endpoints de debug sont protégés par compilation conditionnelle :
-
-```csharp
-#if !DEBUG
-[ApiExplorerSettings(IgnoreApi = true)]
-#endif
-public async Task<IActionResult> GetLastCode(string email)
-{
-#if !DEBUG
-    return NotFound();
-#else
-    _logger.LogWarning("⚠️ DEV ENDPOINT utilisé pour {Email}", email);
-    // implémentation
-#endif
-}
-```
+**Jamais de `#if DEBUG` sur une propriété mappée par EF, ni sur rien qui change le modèle.**
+Le snapshot des migrations est généré en Debug ; le build Release (production) aurait un
+modèle différent, et depuis EF Core 9 `Migrate()` échoue au démarrage
+(`PendingModelChangesWarning`) — l'API ne démarre plus. Garde-fou :
+`MigrationSnapshotTests` (la CI teste en Release). En développement, le code OTP est
+journalisé (`#if DEBUG` sur le **log** seulement).
 
 ### Taille des fichiers upload
 

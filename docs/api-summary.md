@@ -33,7 +33,6 @@
 | POST | `/verify-device` | ❌ | Auth via token d'appareil de confiance |
 | POST | `/logout` | ✅ | Révocation du refresh token |
 | GET | `/me` | ✅ | Utilisateur connecté (`UserDto`) |
-| GET | `/dev/get-code/{email}` | ❌ | **[DEV ONLY]** Récupère l'OTP en clair |
 
 ### Corps de requête
 

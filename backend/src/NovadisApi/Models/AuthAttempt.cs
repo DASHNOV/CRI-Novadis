@@ -33,14 +33,5 @@ namespace NovadisApi.Models
         public bool IsUsed { get; set; } = false;
 
         public int FailedAttempts { get; set; } = 0;
-
-        /// <summary>
-        /// ⚠️ CODE EN CLAIR - UNIQUEMENT POUR LE DÉVELOPPEMENT
-        /// À SUPPRIMER EN PRODUCTION
-        /// </summary>
-#if DEBUG
-        [MaxLength(10)]
-        public string? PlainCode { get; set; }
-#endif
     }
 }
