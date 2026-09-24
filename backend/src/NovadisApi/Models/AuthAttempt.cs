@@ -14,8 +14,14 @@ namespace NovadisApi.Models
         [MaxLength(255)]
         public string Email { get; set; } = string.Empty;
 
+        /// <summary>HMAC-SHA256 du code, clé <see cref="CodeSalt"/> (base64).</summary>
         [Required]
         public string CodeHash { get; set; } = string.Empty;
+
+        /// <summary>Sel aléatoire propre à la tentative (16 octets, base64).</summary>
+        [Required]
+        [MaxLength(32)]
+        public string CodeSalt { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

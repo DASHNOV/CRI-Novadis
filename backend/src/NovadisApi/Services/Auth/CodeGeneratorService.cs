@@ -1,12 +1,14 @@
 using System.Security.Cryptography;
+using System.Text;
 
 namespace NovadisApi.Services.Auth
 {
     public interface ICodeGeneratorService
     {
         string GenerateCode(int length = 6);
-        string HashCode(string code);
-        bool VerifyCode(string code, string hash);
+        string GenerateSalt();
+        string HashCode(string code, string salt);
+        bool VerifyCode(string code, string hash, string salt);
     }
 
     public class CodeGeneratorService : ICodeGeneratorService
@@ -25,26 +27,32 @@ namespace NovadisApi.Services.Auth
         }
 
         /// <summary>
-        /// Hash un code avec SHA256 et un sel pour stockage sécurisé
+        /// Sel aléatoire de 16 octets, un par tentative, stocké en base64 avec le condensat.
         /// </summary>
-        public string HashCode(string code)
+        public string GenerateSalt() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
+
+        /// <summary>
+        /// HMAC-SHA256 du code, clé = sel de la tentative. Le sel empêche une table
+        /// précalculée commune à toutes les tentatives (l'ancien sel constant, en dur).
+        /// </summary>
+        public string HashCode(string code, string salt)
         {
-            // Note: En production réelle, on utiliserait un sel stocké en base par utilisateur.
-            // Pour des codes à 6 chiffres éphémères, un sel constant applicatif est un premier rempart.
-            const string internalSalt = "Novadis_Security_Salt_2025_!";
-            using var sha256 = SHA256.Create();
-            var bytes = System.Text.Encoding.UTF8.GetBytes(code + internalSalt);
-            var hash = sha256.ComputeHash(bytes);
+            var hash = HMACSHA256.HashData(Convert.FromBase64String(salt), Encoding.UTF8.GetBytes(code));
             return Convert.ToBase64String(hash);
         }
 
         /// <summary>
-        /// Vérifie si un code correspond au hash stocké
+        /// Vérifie un code en temps constant : la durée de comparaison ne révèle pas
+        /// combien d'octets du condensat correspondent.
         /// </summary>
-        public bool VerifyCode(string code, string hash)
+        public bool VerifyCode(string code, string hash, string salt)
         {
-            var codeHash = HashCode(code);
-            return codeHash == hash;
+            byte[] expected;
+            try { expected = Convert.FromBase64String(hash); }
+            catch (FormatException) { return false; }
+
+            var actual = Convert.FromBase64String(HashCode(code, salt));
+            return CryptographicOperations.FixedTimeEquals(actual, expected);
         }
     }
 }

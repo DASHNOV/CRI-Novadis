@@ -124,6 +124,7 @@ erDiagram
         uuid Id PK
         string Email
         string CodeHash
+        string CodeSalt
         datetime CreatedAt
         datetime ExpiresAt
         string IpAddress
@@ -134,7 +135,7 @@ erDiagram
     USER_TOKEN {
         uuid Id PK
         uuid UserId FK
-        string RefreshToken UK
+        string RefreshTokenHash UK
         string TokenType
         string DeviceInfo
         string IpAddress
@@ -142,7 +143,7 @@ erDiagram
         datetime ExpiresAt
         bool   IsRevoked
         string RevokedReason
-        string TrustedDeviceToken
+        string TrustedDeviceTokenHash
     }
 
     MAGIC_LINK {
@@ -228,14 +229,14 @@ AuditLogs(__Id__: uuid,
       Action, EntityType, EntityId, Details, IpAddress,
       UserAgent, CreatedAt)
 
-AuthAttempts(__Id__: uuid, Email, CodeHash, CreatedAt, ExpiresAt,
+AuthAttempts(__Id__: uuid, Email, CodeHash, CodeSalt, CreatedAt, ExpiresAt,
       IpAddress, IsUsed, FailedAttempts [, PlainCode (DEBUG only)])
 
 UserTokens(__Id__: uuid,
       *UserId* → Users.Id [NOT NULL, ON DELETE CASCADE],
-      RefreshToken[U], TokenType, DeviceInfo, IpAddress,
+      RefreshTokenHash[U], TokenType, DeviceInfo, IpAddress,
       CreatedAt, ExpiresAt, IsRevoked, RevokedReason,
-      TrustedDeviceToken)
+      TrustedDeviceTokenHash)
 
 MagicLinks(__Id__: uuid, Email, Token[U], CreatedAt, ExpiresAt, IsUsed)
 
@@ -257,7 +258,7 @@ ExportedDocuments(__Id__: uuid,
 | CRIPhotos | CRIFormId | non-unique |
 | AuditLogs | UserId, CreatedAt | non-unique |
 | AuthAttempts | Email, (Email, CreatedAt) | non-unique |
-| UserTokens | RefreshToken (U), UserId | mixte |
+| UserTokens | RefreshTokenHash (U), TrustedDeviceTokenHash, UserId | mixte |
 | MagicLinks | Token (U), Email | mixte |
 | ExportedDocuments | UserId, CriId, CreatedAt | non-unique |
 
