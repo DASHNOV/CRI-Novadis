@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using NovadisApi.Data;
 using NovadisApi.Services.Email;
@@ -33,10 +35,11 @@ public class NovadisWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // 1. Supprimer l'enregistrement SQL server existant
-            var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<NovadisDbContext>));
-            if (descriptor != null)
-                services.Remove(descriptor);
+            // 1. Supprimer l'enregistrement Npgsql existant. Depuis EF Core 9, la configuration
+            //    du fournisseur vit aussi dans IDbContextOptionsConfiguration<T> : retirer les
+            //    seules options laissait UseNpgsql actif à côté d'InMemory (« two providers »).
+            services.RemoveAll<DbContextOptions<NovadisDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<NovadisDbContext>>();
             
             // 2. Le remplacement par une base en mémoire, unique par instance de factory
             services.AddDbContext<NovadisDbContext>(options =>
