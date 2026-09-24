@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/data/local/tables/cri_service_table.dart';
 import 'package:novadis_cri/features/cri_form/data/preventive_maintenance_template.dart';

@@ -224,7 +224,9 @@ namespace NovadisApi.Controllers
         [HttpPost("upload")]
         [RequestSizeLimit(50_000_000)]
         public async Task<IActionResult> Upload(
-            [FromForm] IFormFile file,
+            // Sans [FromForm] : IFormFile est lié au formulaire d'office ([ApiController]),
+            // et Swashbuckle 10 refuse l'attribut sur un IFormFile (swagger.json en 500).
+            IFormFile file,
             [FromForm] Guid? criId,
             [FromForm] string? exportType,
             CancellationToken ct = default)
