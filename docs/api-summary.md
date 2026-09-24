@@ -273,6 +273,6 @@ Visibilité : avec `DocumentsReadAll` (Admin, Supervisor), liste et `download` d
 | 401 | Token absent, invalide ou expiré (`Token-Expired` header si expiré) |
 | 403 | Accès refusé (rôle insuffisant ou ressource d'un autre utilisateur) |
 | 404 | Ressource introuvable |
-| 429 | Rate limit dépassé |
+| 429 | Rate limit dépassé, ou e-mail verrouillé après 5 codes OTP erronés (`/login`, `/verify`, 30 min) |
 | 500 | Erreur interne (voir logs Serilog) |
 | 503 | Service indisponible (DB inaccessible) |
