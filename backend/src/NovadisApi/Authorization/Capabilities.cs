@@ -45,12 +45,12 @@ namespace NovadisApi.Authorization
             new Dictionary<string, string[]>
             {
                 [CriCreate] = [RoleNames.Technician, RoleNames.Admin],
-                [CriReadAll] = [RoleNames.Admin],
+                [CriReadAll] = [RoleNames.Admin, RoleNames.Supervisor],
                 [CriManageAny] = [RoleNames.Admin],
                 [PersonalStats] = [RoleNames.Technician, RoleNames.Admin],
-                [GlobalStats] = [RoleNames.Admin],
-                [ExportAll] = [RoleNames.Admin],
-                [DocumentsReadAll] = [RoleNames.Admin],
+                [GlobalStats] = [RoleNames.Admin, RoleNames.Supervisor],
+                [ExportAll] = [RoleNames.Admin, RoleNames.Supervisor],
+                [DocumentsReadAll] = [RoleNames.Admin, RoleNames.Supervisor],
                 [DocumentsManageAny] = [RoleNames.Admin],
                 [SystemAdmin] = [RoleNames.Admin],
             };

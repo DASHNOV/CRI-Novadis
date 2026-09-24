@@ -81,14 +81,14 @@ Règles invariantes (inchangées) :
 - [x] Commit : `Refactor(auth): autorisations par capacité`.
 
 ### Phase 2 — Back : activer `Supervisor`
-- [ ] Ajouter la colonne Supervisor dans `RoleCapabilities` (matrice §4).
-- [ ] `UsersController.GetTechnicians` : **exclure** Supervisor (la liste alimente le choix « Techniciens intervenants »). `GlobalStatsService.GetTechnicianActivityAsync` (l.131) : exclure Supervisor ; `GetTechniciansAsync` : vérifier l'usage (filtre dashboard) et exclure si besoin.
-- [ ] Tests d'intégration Supervisor, un par ligne de la matrice :
+- [x] Ajouter la colonne Supervisor dans `RoleCapabilities` (matrice §4).
+- [x] `UsersController.GetTechnicians` : **exclure** Supervisor (la liste alimente le choix « Techniciens intervenants »). `GlobalStatsService.GetTechnicianActivityAsync` (l.131) : exclure Supervisor ; `GetTechniciansAsync` : vérifier l'usage (filtre dashboard) et exclure si besoin.
+- [x] Tests d'intégration Supervisor, un par ligne de la matrice :
   - 200 : `GET /cri`, `GET /cri/{id}` (CRI d'un autre), `GET photo`, `/api/global/*`, `/api/export/*` (portée global), `GET /exported-documents` (docs de tous), `download`, `/sites/*` en lecture, `/users/me`.
   - 403 : `POST /cri`, `PUT /cri/{id}`, `PATCH /cri/{id}/signature`, `DELETE /cri/{id}`, `POST/DELETE photos`, `/api/personal/*`, `POST /sites/import`, `/api/health`, `rename/delete/mark-shared` sur le doc d'un autre.
   - 200 : `rename/delete` sur **son propre** document exporté.
-- [ ] Test : rôle inconnu en base → connexion refusée.
-- [ ] Commit : `Feat(auth): rôle Supervisor en lecture seule`.
+- [x] Test : rôle inconnu en base → connexion refusée.
+- [x] Commit : `Feat(auth): rôle Supervisor en lecture seule`.
 
 ### Phase 3 — Front : permissions, **sans changement de comportement**
 - [ ] `models/user_role.dart` : ajouter `supervisor` ; `fromString` → `UserRole?` (inconnu = `null` → écran « rôle non pris en charge » + déconnexion, jamais technicien par défaut).
