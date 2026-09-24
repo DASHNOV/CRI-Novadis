@@ -190,10 +190,12 @@ class SyncService with WidgetsBindingObserver {
         try {
           final model = CriServiceModel.fromDb(row);
           await _remote.saveCriService(model);
+          // Pas de try/catch : un envoi de photos en échec doit laisser le CRI
+          // « pending » pour que SyncService le rejoue. L'ancien catch (_) {}
+          // le marquait « synced » et les photos n'étaient jamais envoyées.
+          // Rejouer est sans risque : le serveur ignore les photos déjà reçues.
           if (model.photos.isNotEmpty) {
-            try {
-              await _remote.uploadPhotos(model.id, model.photos);
-            } catch (_) {}
+            await _remote.uploadPhotos(model.id, model.photos);
           }
           await _db.updateCriService(
             model.copyWith(syncStatus: 'synced').toDb(),
@@ -212,10 +214,12 @@ class SyncService with WidgetsBindingObserver {
         try {
           final model = CriProjetModel.fromDb(row);
           await _remote.saveCriProjet(model);
+          // Pas de try/catch : un envoi de photos en échec doit laisser le CRI
+          // « pending » pour que SyncService le rejoue. L'ancien catch (_) {}
+          // le marquait « synced » et les photos n'étaient jamais envoyées.
+          // Rejouer est sans risque : le serveur ignore les photos déjà reçues.
           if (model.photos.isNotEmpty) {
-            try {
-              await _remote.uploadPhotos(model.id, model.photos);
-            } catch (_) {}
+            await _remote.uploadPhotos(model.id, model.photos);
           }
           await _db.updateCriProjet(
             model.copyWith(syncStatus: 'synced').toDb(),
