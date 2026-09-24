@@ -52,6 +52,7 @@ dependencies:
   # Rendu Markdown (aperçu éditeur riche + affichage historiques)
   flutter_markdown_plus: ^1.0.12
   markdown: ^7.2.1
+  image: ^4.5.4
   shimmer: ^3.0.0
   flutter_animate: ^4.5.0
   gap: ^3.0.1
