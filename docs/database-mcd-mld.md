@@ -254,6 +254,7 @@ ExportedDocuments(__Id__: uuid,
 | Sites | NomDuSite, Ville, CodePostal | non-unique |
 | ClientsNormalises | RaisonSociale, Ville | non-unique |
 | CRIForms | TechnicianId, CreatedAt, InterventionDate, Status, ResolutionStatus, Ville, ProjectStatus, TicketNumber, ProjectNumber, SiteID, ClientID | non-unique |
+| CRIForms | `lower(ClientName)`, `lower(ClientSite)` — GIN `gin_trgm_ops` (SQL brut, migration `AddSearchExtensionsAndTrigramIndexes`) | autocomplétion `LIKE '%q%'` |
 | CRIPhotos | CRIFormId | non-unique |
 | AuditLogs | UserId, CreatedAt | non-unique |
 | AuthAttempts | Email, (Email, CreatedAt) | non-unique |
@@ -264,6 +265,8 @@ ExportedDocuments(__Id__: uuid,
 ---
 
 ## 3. Notes d'implémentation
+
+- **Extensions PostgreSQL** (déclarées dans le modèle, `HasPostgresExtension`) : `unaccent` (recherche de sites), `pg_trgm` (index d'autocomplétion).
 
 - **SGBD** : PostgreSQL (migré depuis SQL Server). Les types `Guid` C# → `uuid` PG ; `string` → `varchar`/`text` ; `DateTime` → `timestamp` ; `TimeSpan` → `interval` ; `bool` → `boolean`.
 - **Phase 1** : colonnes statistiques extraites du JSON `Data` directement dans `CRIForms` (`Ville`, `CodePostal`, `ProjectStatus`, etc.) pour requêtes indexées.
