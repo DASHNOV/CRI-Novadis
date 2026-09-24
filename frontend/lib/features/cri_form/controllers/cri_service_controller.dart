@@ -416,10 +416,10 @@ class CriServiceFormNotifier extends StateNotifier<CriServiceFormState> {
       // 2. Push distant
       try {
         await _remoteRepo.saveCriService(submittedCri);
+        // Échec des photos → catch ci-dessous : le CRI reste « pending » et
+        // SyncService rejoue l'envoi (le serveur ignore les photos déjà reçues).
         if (submittedCri.photos.isNotEmpty) {
-          try {
-            await _remoteRepo.uploadPhotos(submittedCri.id, submittedCri.photos);
-          } catch (_) {}
+          await _remoteRepo.uploadPhotos(submittedCri.id, submittedCri.photos);
         }
         submittedCri = submittedCri.copyWith(syncStatus: 'synced');
         await _db.updateCriService(submittedCri.toDb());
