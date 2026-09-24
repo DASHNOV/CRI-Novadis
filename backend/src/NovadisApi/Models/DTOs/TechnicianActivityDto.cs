@@ -24,7 +24,11 @@ namespace NovadisApi.Models.DTOs
     }
 
     /// <summary>
-    /// CRI avec informations du technicien (admin)
+    /// CRI avec informations du technicien (liste admin « Tous les CRI »).
+    /// Sans <c>Data</c> ni signature technicien : une liste n'en a pas l'usage, et ces
+    /// deux champs faisaient l'essentiel du poids de la réponse. La fiche complète
+    /// s'obtient par <c>GET /api/CRI/{id}</c>. <see cref="ClientSignature"/> est conservée :
+    /// l'écran (et les APK déjà installés) en déduisent le statut « signé ».
     /// </summary>
     public class CRIWithTechnicianDto
     {
@@ -42,8 +46,6 @@ namespace NovadisApi.Models.DTOs
         public string? MaterialsUsed { get; set; }
         public decimal? Duration { get; set; }
         public string Status { get; set; } = "Draft";
-        public string? Data { get; set; }
-        public string? TechnicianSignature { get; set; }
         public string? ClientSignature { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

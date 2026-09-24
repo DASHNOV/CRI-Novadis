@@ -240,8 +240,6 @@ namespace NovadisApi.Services.Export
             var range = ComputeRange(period, referenceDate);
 
             IQueryable<CRIForm> query = _db.CRIForms
-                .Include(c => c.Technician)
-                .Include(c => c.Site)
                 .AsNoTracking()
                 .Where(c => c.InterventionDate >= range.StartUtc && c.InterventionDate < range.EndUtcExclusive);
 
@@ -250,7 +248,11 @@ namespace NovadisApi.Services.Export
                 query = query.Where(c => c.TechnicianId == requesterId);
             }
 
-            var cris = await query.OrderBy(c => c.InterventionDate).ToListAsync();
+            // Aucune feuille ne lit Data ni les signatures : les charger multipliait la
+            // mémoire d'un export annuel (cause probable du gel du VPS, cf. resolved-issues).
+            var cris = await query.OrderBy(c => c.InterventionDate)
+                .WithoutHeavyColumns(_db.Model)
+                .ToListAsync();
 
             var previousRange = ComputePreviousRange(period, referenceDate);
             IQueryable<CRIForm> previousQuery = _db.CRIForms
@@ -260,11 +262,16 @@ namespace NovadisApi.Services.Export
             {
                 previousQuery = previousQuery.Where(c => c.TechnicianId == requesterId);
             }
-            var previousCris = await previousQuery.ToListAsync();
+            // Seuls trois totaux servent à la comparaison : agrégés en SQL. Charger les
+            // entités (Data JSON + signatures base64) doublait la mémoire d'un export annuel.
+            var previous = new PeriodTotals(
+                await previousQuery.CountAsync(),
+                await previousQuery.SumAsync(c => c.DureeMinutes ?? 0),
+                await previousQuery.CountAsync(c => c.ResolutionStatus == "resolu" || c.ProjectStatus == "termine"));
 
             using var wb = new XLWorkbook();
             BuildCoverSheet(wb, cris, period, range, allTechnicians, detailLevel);
-            BuildSummarySheet(wb, cris, previousCris, period, range, allTechnicians);
+            BuildSummarySheet(wb, cris, previous, period, range, allTechnicians);
             if (detailLevel == ExportDetailLevel.Full)
             {
                 BuildInterventionsSheet(wb, cris);
@@ -365,7 +372,10 @@ namespace NovadisApi.Services.Export
             ApplyPrintSetup(ws, landscape: false, repeatHeaderRow: false);
         }
 
-        private static void BuildSummarySheet(XLWorkbook wb, List<CRIForm> cris, List<CRIForm> previousCris, ExportPeriod period, PeriodRange range, bool allTechnicians)
+        /// <summary>Totaux de la période précédente, pour la section « Évolution ».</summary>
+        internal sealed record PeriodTotals(int Total, int DureeTotaleMinutes, int Resolus);
+
+        private static void BuildSummarySheet(XLWorkbook wb, List<CRIForm> cris, PeriodTotals previous, ExportPeriod period, PeriodRange range, bool allTechnicians)
         {
             var ws = wb.Worksheets.Add("Résumé");
             ws.ShowGridLines = false;
@@ -424,9 +434,9 @@ namespace NovadisApi.Services.Export
             row++;
             SectionHeader(ws, row++, "Évolution vs période précédente");
 
-            var prevTotal = previousCris.Count;
-            var prevDureeTotale = previousCris.Sum(c => c.DureeMinutes ?? 0);
-            var prevResolus = previousCris.Count(c => c.ResolutionStatus == "resolu" || c.ProjectStatus == "termine");
+            var prevTotal = previous.Total;
+            var prevDureeTotale = previous.DureeTotaleMinutes;
+            var prevResolus = previous.Resolus;
             var prevTauxResolution = prevTotal > 0 ? Math.Round(prevResolus / (double)prevTotal * 100.0, 1) : 0.0;
 
             WriteTrendKpi(ws, ref row, "Nb interventions", total, prevTotal);

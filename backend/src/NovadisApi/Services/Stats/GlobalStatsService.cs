@@ -53,11 +53,8 @@ public sealed class GlobalStatsService : IGlobalStatsService
     public async Task<IReadOnlyList<CRIWithTechnicianDto>> GetAllCRIsWithTechnicianAsync(
         Guid? technicienId, string filter, string? searchId, CancellationToken ct = default)
     {
-        var query = _context.CRIForms
-            .Include(c => c.Technician)
-            .Include(c => c.Site)
-            .Include(c => c.Client)
-            .AsQueryable();
+        // Projection : les Include étaient ignorés, et la jointure suit les navigations du Select.
+        var query = _context.CRIForms.AsNoTracking();
 
         if (technicienId.HasValue)
             query = query.Where(c => c.TechnicianId == technicienId.Value);
@@ -90,8 +87,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 MaterialsUsed = c.MaterialsUsed,
                 Duration = c.Duration,
                 Status = c.Status,
-                Data = c.Data,
-                TechnicianSignature = c.TechnicianSignature,
                 ClientSignature = c.ClientSignature,
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt,
