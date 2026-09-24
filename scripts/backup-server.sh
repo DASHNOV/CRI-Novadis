@@ -6,9 +6,9 @@
 
 set -euo pipefail
 
-APP_DIR="/opt/cri-novadis"
+APP_DIR="${APP_DIR:-/opt/cri-novadis}"
 BACKUP_DIR="$APP_DIR/backups"
-DB_CONTAINER="cri-novadis-db-1"
+DB_CONTAINER="${DB_CONTAINER:-cri-novadis-db-1}"
 RETENTION_DAYS=14
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
@@ -17,6 +17,25 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # sur le serveur, jamais dans le dépôt.
 OFFSITE_REMOTE="${OFFSITE_REMOTE:-offsite}"
 OFFSITE_BUCKET="${OFFSITE_BUCKET:-cri-novadis-backups}"
+
+# Heartbeat (healthchecks.io ou équivalent) : une sauvegarde qui cesse en silence
+# doit lever une alerte PAR ABSENCE de signal. URL lue dans l'environnement, sinon
+# dans $APP_DIR/.env (BACKUP_HEARTBEAT_URL=...) — le cron de root n'hérite d'aucune
+# variable. Sans URL, le script fonctionne mais personne n'est prévenu d'un échec.
+if [ -z "${BACKUP_HEARTBEAT_URL:-}" ] && [ -f "$APP_DIR/.env" ]; then
+  BACKUP_HEARTBEAT_URL=$(grep -E '^BACKUP_HEARTBEAT_URL=' "$APP_DIR/.env" | tail -n 1 | cut -d= -f2- | tr -d '"\r' || true)
+fi
+
+# $1 : suffixe ("" = succès, "/start", "/fail"). Un ping perdu ne fait jamais
+# échouer la sauvegarde elle-même.
+ping_heartbeat() {
+  [ -n "${BACKUP_HEARTBEAT_URL:-}" ] || return 0
+  curl -fsS -m 10 --retry 3 -o /dev/null "${BACKUP_HEARTBEAT_URL}$1"     || echo "[$TIMESTAMP] AVERTISSEMENT : heartbeat ${1:-succès} injoignable." >&2
+}
+
+# Toute commande en échec (set -e) signale l'échec avant de quitter.
+trap 'ping_heartbeat /fail' ERR
+ping_heartbeat /start
 
 mkdir -p "$BACKUP_DIR"
 
@@ -55,10 +74,24 @@ if command -v rclone >/dev/null 2>&1 && rclone listremotes 2>/dev/null | grep -q
     --max-age 48h \
     --log-level INFO
   echo "[$TIMESTAMP] Copie hors site terminée vers ${OFFSITE_REMOTE}:${OFFSITE_BUCKET}"
+  OFFSITE_OK=1
 else
   echo "[$TIMESTAMP] AVERTISSEMENT : remote rclone '${OFFSITE_REMOTE}' introuvable —" >&2
   echo "[$TIMESTAMP] les sauvegardes restent SUR LE VPS et ne survivront pas à sa perte." >&2
+  OFFSITE_OK=0
 fi
 
-echo "[$TIMESTAMP] Terminé. Fichiers présents dans $BACKUP_DIR :"
+echo "[$TIMESTAMP] Fichiers présents dans $BACKUP_DIR :"
 ls -lh "$BACKUP_DIR" | tail -n +2
+
+# Une sauvegarde restée locale est un échec, pas un succès avec avertissement :
+# c'est précisément le cas qui passait inaperçu (config rclone absente pour root).
+if [ "$OFFSITE_OK" -ne 1 ]; then
+  trap - ERR
+  ping_heartbeat /fail
+  echo "[$TIMESTAMP] ÉCHEC : sauvegarde locale seulement." >&2
+  exit 1
+fi
+
+ping_heartbeat ""
+echo "[$TIMESTAMP] Terminé."

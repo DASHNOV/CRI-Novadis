@@ -35,6 +35,24 @@ namespace NovadisApi.Controllers
         public IActionResult Live() => Ok(new { status = "alive", timestamp = DateTime.UtcNow });
 
         /// <summary>
+        /// Readiness publique, pour le monitoring externe et le smoke test du déploiement :
+        /// mêmes contrôles que <see cref="Get"/> (base, disque) mais ne renvoie que
+        /// <c>{ status, degraded }</c> — aucune donnée d'infrastructure. 503 si une
+        /// dépendance est indisponible. La liveness (<c>/live</c>) reste la sonde de
+        /// redémarrage Docker : elle répond 200 même base injoignable.
+        /// </summary>
+        [HttpGet("ready")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> Ready()
+        {
+            var probe = await ProbeDependenciesAsync(countUsers: false);
+            var body = new { status = probe.Healthy ? "ready" : "unavailable", degraded = probe.Degraded };
+            return probe.Healthy ? Ok(body) : StatusCode(StatusCodes.Status503ServiceUnavailable, body);
+        }
+
+        /// <summary>
         /// Readiness probe enrichie : DB, latence, espace disque, mémoire.
         /// </summary>
         [HttpGet]
@@ -45,54 +63,29 @@ namespace NovadisApi.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Get()
         {
+            var probe = await ProbeDependenciesAsync(countUsers: true);
             var checks = new Dictionary<string, object>();
-            var allHealthy = true;
+            var allHealthy = probe.Healthy;
 
             // 1️⃣ DB connectivité + latence
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            bool dbOk;
-            int? userCount = null;
-            try
-            {
-                dbOk = await _context.Database.CanConnectAsync();
-                if (dbOk) userCount = await _context.Users.CountAsync();
-            }
-            catch (Exception ex)
-            {
-                dbOk = false;
-                _logger.LogWarning(ex, "Health: DB unreachable");
-            }
-            sw.Stop();
-            allHealthy &= dbOk;
             checks["database"] = new
             {
-                status = dbOk ? "healthy" : "unhealthy",
-                latencyMs = sw.ElapsedMilliseconds,
-                degraded = sw.ElapsedMilliseconds > 500,
-                usersCount = userCount
+                status = probe.DbOk ? "healthy" : "unhealthy",
+                latencyMs = probe.DbLatencyMs,
+                degraded = probe.Degraded,
+                usersCount = probe.UserCount
             };
 
             // 2️⃣ Espace disque (drive courant)
-            try
-            {
-                var drive = new DriveInfo(Path.GetPathRoot(Directory.GetCurrentDirectory()) ?? "C:\\");
-                var freeGb = drive.AvailableFreeSpace / 1024.0 / 1024.0 / 1024.0;
-                var totalGb = drive.TotalSize / 1024.0 / 1024.0 / 1024.0;
-                var diskOk = freeGb > 1.0;  // Seuil : 1 Go libre minimum
-                allHealthy &= diskOk;
-                checks["disk"] = new
+            checks["disk"] = probe.FreeGb is double freeGb && probe.TotalGb is double totalGb
+                ? new
                 {
-                    status = diskOk ? "healthy" : "critical",
+                    status = probe.DiskOk ? "healthy" : "critical",
                     freeGb = Math.Round(freeGb, 2),
                     totalGb = Math.Round(totalGb, 2),
                     usedPct = Math.Round(100 - (freeGb / totalGb * 100), 1)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Health: espace disque illisible");
-                checks["disk"] = new { status = "unknown" };
-            }
+                }
+                : new { status = "unknown" };
 
             // 3️⃣ Mémoire process
             var proc = System.Diagnostics.Process.GetCurrentProcess();
@@ -118,6 +111,54 @@ namespace NovadisApi.Controllers
             };
 
             return allHealthy ? Ok(response) : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+        }
+
+        private sealed record DependencyProbe(
+            bool DbOk, long DbLatencyMs, int? UserCount, bool DiskOk, double? FreeGb, double? TotalGb)
+        {
+            public bool Healthy => DbOk && DiskOk;
+            public bool Degraded => DbLatencyMs > 500;
+        }
+
+        /// <summary>
+        /// Contrôles communs à <see cref="Get"/> et <see cref="Ready"/>. Connexion bornée à
+        /// 5 s : une base injoignable doit donner un 503 rapide, pas un délai d'attente
+        /// côté moniteur. Espace disque illisible = non bloquant (statut « unknown »).
+        /// </summary>
+        private async Task<DependencyProbe> ProbeDependenciesAsync(bool countUsers)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            bool dbOk;
+            int? userCount = null;
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
+                cts.CancelAfter(TimeSpan.FromSeconds(5));
+                dbOk = await _context.Database.CanConnectAsync(cts.Token);
+                if (dbOk && countUsers) userCount = await _context.Users.CountAsync(cts.Token);
+            }
+            catch (Exception ex)
+            {
+                dbOk = false;
+                _logger.LogWarning(ex, "Health: DB unreachable");
+            }
+            sw.Stop();
+
+            double? freeGb = null, totalGb = null;
+            var diskOk = true;
+            try
+            {
+                var drive = new DriveInfo(Path.GetPathRoot(Directory.GetCurrentDirectory()) ?? "C:\\");
+                freeGb = drive.AvailableFreeSpace / 1024.0 / 1024.0 / 1024.0;
+                totalGb = drive.TotalSize / 1024.0 / 1024.0 / 1024.0;
+                diskOk = freeGb > 1.0;  // Seuil : 1 Go libre minimum
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Health: espace disque illisible");
+            }
+
+            return new DependencyProbe(dbOk, sw.ElapsedMilliseconds, userCount, diskOk, freeGb, totalGb);
         }
 
         /// <summary>

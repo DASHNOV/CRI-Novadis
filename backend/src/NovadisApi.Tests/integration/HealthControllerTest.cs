@@ -32,7 +32,23 @@ public class HealthControllerTests : IClassFixture<NovadisWebApplicationFactory>
         json.GetProperty("status").GetString().Should().Be("alive");
     }
 
-    // ─── Readiness : administrateurs uniquement ──────────────────────────────
+    // ─── Readiness publique : monitoring externe et smoke test (étape 3.1) ────
+
+    [Fact]
+    public async Task Ready_WithoutToken_ReturnsOk_WithStatusAndDegradedOnly()
+    {
+        var response = await CreateClient().GetAsync("/api/health/ready");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        json.GetProperty("status").GetString().Should().Be("ready");
+        json.GetProperty("degraded").ValueKind.Should().BeOneOf(JsonValueKind.True, JsonValueKind.False);
+        // Anonyme : aucune donnée d'infrastructure (machine, disque, comptes, mémoire).
+        json.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("status", "degraded");
+    }
+
+    // ─── Readiness détaillée : administrateurs uniquement ────────────────────
 
     [Fact]
     public async Task Get_WithoutToken_Returns401()
