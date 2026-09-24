@@ -328,6 +328,13 @@ lib/
 7. Sur échec refresh : redirection /login
 ```
 
+### Stockage des secrets (migration `HashAuthSecrets`, étape 2.4)
+
+- Code OTP : `HMAC-SHA256(code, CodeSalt)`, sel aléatoire de 16 octets par tentative, comparaison en temps constant (`CryptographicOperations.FixedTimeEquals`)
+- Refresh token et jeton d'appareil de confiance : seul `SHA-256` est stocké (`TokenHasher.Hash`) ; recherche par condensat
+- Une copie de la base ne donne ni code ni session exploitable
+- `TokenHasher.Hash` ≡ SQL `encode(sha256(convert_to(t,'UTF8')),'base64')` — ne pas modifier l'un sans l'autre
+
 ---
 
 ## Déploiement & CI/CD

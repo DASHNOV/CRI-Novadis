@@ -15,8 +15,13 @@ namespace NovadisApi.Models
         [ForeignKey("UserId")]
         public User? User { get; set; }
 
+        /// <summary>
+        /// SHA-256 du refresh token (<see cref="Services.Auth.TokenHasher"/>). Le jeton
+        /// lui-même n'est jamais stocké : une fuite de la base ne donne pas de session.
+        /// </summary>
         [Required]
-        public string RefreshToken { get; set; } = string.Empty;
+        [MaxLength(64)]
+        public string RefreshTokenHash { get; set; } = string.Empty;
 
         public string TokenType { get; set; } = "Refresh"; // Refresh, Access, etc.
 
@@ -34,7 +39,8 @@ namespace NovadisApi.Models
 
         public string? RevokedReason { get; set; }
 
-        [MaxLength(128)]
-        public string? TrustedDeviceToken { get; set; }
+        /// <summary>SHA-256 du jeton d'appareil de confiance, même principe.</summary>
+        [MaxLength(64)]
+        public string? TrustedDeviceTokenHash { get; set; }
     }
 }
