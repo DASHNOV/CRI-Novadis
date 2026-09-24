@@ -87,7 +87,8 @@ NovadisApi/
 
 ### CORS (`AllowMobileApp`)
 
-- Origines autorisées : domaines prod/dev + `localhost:*` + `192.168.*` + `10.*` + `*.vercel.app`
+- Origines autorisées : liste exacte `Cors:AllowedOrigins` ; en dev seulement, `localhost:*` + `192.168.*` + `10.*`
+- Pas de joker `*.vercel.app` (retiré, étape 2.3) : une preview à autoriser s'ajoute explicitement à la liste
 - Headers exposés : `Token-Expired`, `Content-Disposition`, `X-Total-Count`, `X-Page`, `X-Page-Size`, `X-Total-Pages`
 
 ### Rate limiting
