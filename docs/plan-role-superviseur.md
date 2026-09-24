@@ -91,15 +91,15 @@ Règles invariantes (inchangées) :
 - [x] Commit : `Feat(auth): rôle Supervisor en lecture seule`.
 
 ### Phase 3 — Front : permissions, **sans changement de comportement**
-- [ ] `models/user_role.dart` : ajouter `supervisor` ; `fromString` → `UserRole?` (inconnu = `null` → écran « rôle non pris en charge » + déconnexion, jamais technicien par défaut).
-- [ ] `core/constants/permissions.dart` : aligner `Permission` sur les capacités §4 (mêmes noms) ; `rolePermissions` = copie exacte de la matrice. Fusionner les deux classes `UserRole` (constantes String + enum) en une seule.
-- [ ] Remplacer les tests de rôle par `permissionsProvider.hasPermission(...)` :
+- [x] `models/user_role.dart` : ajouter `supervisor` ; `fromString` → `UserRole?` (inconnu = `null` → écran « rôle non pris en charge » + déconnexion, jamais technicien par défaut).
+- [x] `core/constants/permissions.dart` : aligner `Permission` sur les capacités §4 (mêmes noms) ; `rolePermissions` = copie exacte de la matrice. Fusionner les deux classes `UserRole` (constantes String + enum) en une seule.
+- [x] Remplacer les tests de rôle par `permissionsProvider.hasPermission(...)` :
   - `features/documents/pages/documents_page.dart` l.37 (`isAdmin`) → `DocumentsReadAll` pour la colonne « Utilisateur » / recherche ; `DocumentsManageAny` **ou propriétaire** pour renommer / supprimer / partager.
   - `features/dashboard/pages/main_dashboard_page.dart` l.44 → `GlobalStats`.
   - `screens/admin/global_history_screen.dart` l.1044, 1067 → `CriManageAny`.
-- [ ] Supprimer `core/widgets/protected_route.dart` (jamais utilisé) **ou** l'utiliser pour les gardes de routes de la phase 4 — choisir l'un, pas de code mort.
-- [ ] `flutter analyze` propre, comportement Technician / Admin identique (recette rapide).
-- [ ] Commit : `Refactor(front): permissions par capacité`.
+- [x] Supprimer `core/widgets/protected_route.dart` (jamais utilisé) **ou** l'utiliser pour les gardes de routes de la phase 4 — choisir l'un, pas de code mort.
+- [x] `flutter analyze` propre, comportement Technician / Admin identique (recette rapide).
+- [x] Commit : `Refactor(front): permissions par capacité`.
 
 ### Phase 4 — Front : interface Superviseur
 - [ ] `screens/role_home_screen.dart` : `UserRole.supervisor => SupervisorMainScreen()`.

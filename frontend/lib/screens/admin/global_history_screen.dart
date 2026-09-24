@@ -1041,8 +1041,8 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
   Widget _buildGlobalCriCard(Map<String, dynamic> cri) {
     final currentUserId = ref.read(userIdProvider);
     final criOwnerId = cri['technicianId']?.toString();
-    final isAdmin = ref.read(permissionsProvider).hasPermission(Permission.deleteAnyCri);
-    final canDeleteRemote = isAdmin ||
+    final canManageAny = ref.read(permissionsProvider).hasPermission(Permission.criManageAny);
+    final canDeleteRemote = canManageAny ||
         (currentUserId != null &&
             criOwnerId != null &&
             currentUserId == criOwnerId);
@@ -1064,7 +1064,7 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
     final isOwner = currentUserId != null &&
         criOwnerId != null &&
         currentUserId == criOwnerId;
-    final isAdmin = ref.read(permissionsProvider).hasPermission(Permission.deleteAnyCri);
+    final canManageAny = ref.read(permissionsProvider).hasPermission(Permission.criManageAny);
     // Un CRI déjà soumis n'est modifiable que par son propriétaire.
     // Un CRI non synchronisé, lui, n'existe que sur cet appareil :
     // il n'a pas de propriétaire côté serveur à comparer.
@@ -1083,7 +1083,7 @@ class _GlobalHistoryScreenState extends ConsumerState<GlobalHistoryScreen> {
         initialClientSignature: cri['clientSignature']?.toString(),
         canToggleSignature: isOwner,
         onSignatureChanged: _loadData,
-        canDelete: !isPending && (isAdmin || isOwner),
+        canDelete: !isPending && (canManageAny || isOwner),
         onDeleted: () {
           if (mounted) _loadData();
         },

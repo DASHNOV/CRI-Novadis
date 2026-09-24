@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:novadis_cri/core/constants/permissions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -33,8 +34,9 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
     ref.watch(themeAnimationProvider);
     final selected = ref.watch(selectedServerDocumentsProvider);
     final hasSelection = selected.isNotEmpty;
-    final role = ref.watch(userRoleProvider);
-    final isAdmin = role == 'Admin';
+    final showAllUsers = ref
+        .watch(permissionsProvider)
+        .hasPermission(Permission.documentsReadAll);
 
     final filter = ref.watch(serverDocumentsFilterProvider);
     final docsAsync = ref.watch(serverDocumentsProvider(filter));
@@ -114,7 +116,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        if (isAdmin)
+                                        if (showAllUsers)
                                           Text(
                                             'Tous les exports — vue administrateur',
                                             style: TextStyle(
@@ -156,7 +158,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                                         letterSpacing: -0.3,
                                       ),
                                     ),
-                                    if (isAdmin)
+                                    if (showAllUsers)
                                       Text(
                                         'Tous les exports — vue administrateur',
                                         style: TextStyle(
@@ -208,7 +210,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                         itemCount: sorted.length,
                         itemBuilder: (context, i) => _ServerDocumentCard(
                           doc: sorted[i],
-                          isAdmin: isAdmin,
+                          showAllUsers: showAllUsers,
                           isSelected: selected.contains(sorted[i].id),
                           onTap: () => _openDocument(sorted[i]),
                           onOpen: () => _openDocument(sorted[i]),
@@ -227,7 +229,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                     },
                     child: _DesktopDocumentTable(
                       docs: sorted,
-                      isAdmin: isAdmin,
+                      showAllUsers: showAllUsers,
                       selected: selected,
                       onTap: _openDocument,
                       onOpen: _openDocument,
@@ -566,7 +568,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
 // ─── Tableau desktop ───
 class _DesktopDocumentTable extends StatelessWidget {
   final List<ServerExportedDocument> docs;
-  final bool isAdmin;
+  final bool showAllUsers;
   final Set<String> selected;
   final void Function(ServerExportedDocument) onTap;
   final void Function(ServerExportedDocument) onOpen;
@@ -577,7 +579,7 @@ class _DesktopDocumentTable extends StatelessWidget {
 
   const _DesktopDocumentTable({
     required this.docs,
-    required this.isAdmin,
+    required this.showAllUsers,
     required this.selected,
     required this.onTap,
     required this.onOpen,
@@ -617,7 +619,7 @@ class _DesktopDocumentTable extends StatelessWidget {
                   width: 70,
                   child: Text('Taille', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textTertiary)),
                 ),
-                if (isAdmin)
+                if (showAllUsers)
                   Expanded(
                     flex: 3,
                     child: Text('Utilisateur', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textTertiary)),
@@ -684,7 +686,7 @@ class _DesktopDocumentTable extends StatelessWidget {
                       style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
                     ),
                   ),
-                  if (isAdmin)
+                  if (showAllUsers)
                     Expanded(
                       flex: 3,
                       child: Text(
@@ -724,7 +726,7 @@ class _DesktopDocumentTable extends StatelessWidget {
 // ─── Card pour un document serveur ───
 class _ServerDocumentCard extends StatelessWidget {
   final ServerExportedDocument doc;
-  final bool isAdmin;
+  final bool showAllUsers;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onOpen;
@@ -735,7 +737,7 @@ class _ServerDocumentCard extends StatelessWidget {
 
   const _ServerDocumentCard({
     required this.doc,
-    required this.isAdmin,
+    required this.showAllUsers,
     required this.isSelected,
     required this.onTap,
     required this.onOpen,
@@ -823,7 +825,7 @@ class _ServerDocumentCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (isAdmin && doc.userName != null) ...[
+                      if (showAllUsers && doc.userName != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [

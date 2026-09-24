@@ -1,23 +1,31 @@
-/// Énumération des rôles utilisateur
+/// Rôles utilisateur. Valeurs API alignées sur `RoleNames` côté back.
 enum UserRole {
-  technician,
-  admin;
+  technician('Technician', 'Technicien'),
+  admin('Admin', 'Administrateur'),
+  supervisor('Supervisor', 'Superviseur');
 
-  /// Convertit une string en UserRole
-  static UserRole fromString(String role) {
-    return UserRole.values.firstWhere(
-      (e) => e.name.toLowerCase() == role.toLowerCase(),
-      orElse: () => UserRole.technician,
-    );
-  }
+  const UserRole(this.apiValue, this.label);
 
-  /// Retourne le nom du rôle pour l'API
-  String toApiString() {
-    switch (this) {
-      case UserRole.admin:
-        return 'Admin';
-      case UserRole.technician:
-        return 'Technician';
+  /// Valeur stockée en base et émise dans le JWT.
+  final String apiValue;
+
+  /// Libellé affiché dans l'interface.
+  final String label;
+
+  /// Rôle reconnu, ou `null` pour une valeur inconnue. Pas de repli sur
+  /// technicien : un rôle non géré par cette version de l'app ne doit pas
+  /// ouvrir l'espace de création de CRI (cf. docs/plan-role-superviseur.md §3).
+  static UserRole? fromString(String? role) {
+    switch (role?.trim().toLowerCase()) {
+      case 'technician':
+      case 'technicien':
+        return UserRole.technician;
+      case 'admin':
+        return UserRole.admin;
+      case 'supervisor':
+        return UserRole.supervisor;
+      default:
+        return null;
     }
   }
 }

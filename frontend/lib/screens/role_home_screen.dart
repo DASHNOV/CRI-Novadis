@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:novadis_cri/core/config/app_router.dart';
 import 'package:novadis_cri/core/storage/storage_service.dart';
+import 'package:novadis_cri/core/theme/app_theme.dart';
+import 'package:novadis_cri/features/auth/data/auth_service.dart';
 import 'package:novadis_cri/models/user_role.dart';
 import 'package:novadis_cri/screens/technician/technician_main_screen.dart';
 import 'package:novadis_cri/screens/admin/admin_main_screen.dart';
@@ -31,11 +35,8 @@ class _RoleHomeScreenState extends ConsumerState<RoleHomeScreen> {
 
     if (mounted) {
       setState(() {
-        if (roleStr != null && roleStr.isNotEmpty) {
-          _role = UserRole.fromString(roleStr);
-        } else {
-          _role = UserRole.technician;
-        }
+        // Rôle absent ou inconnu → null : jamais de repli sur technicien.
+        _role = UserRole.fromString(roleStr);
         _isLoading = false;
       });
     }
@@ -44,7 +45,7 @@ class _RoleHomeScreenState extends ConsumerState<RoleHomeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(themeAnimationProvider);
-    if (_isLoading || _role == null) {
+    if (_isLoading) {
       return const Scaffold(
         body: Center(
           child: Column(
@@ -59,9 +60,54 @@ class _RoleHomeScreenState extends ConsumerState<RoleHomeScreen> {
       );
     }
 
-    return switch (_role!) {
+    return switch (_role) {
       UserRole.admin => const AdminMainScreen(),
       UserRole.technician => const TechnicianMainScreen(),
+      UserRole.supervisor || null => const _UnsupportedRoleScreen(),
     };
+  }
+}
+
+/// Rôle absent ou non géré par cette version de l'application : aucun espace
+/// n'est ouvert, l'utilisateur ne peut que se déconnecter.
+class _UnsupportedRoleScreen extends ConsumerWidget {
+  const _UnsupportedRoleScreen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.space24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_outline, size: 56, color: AppTheme.textTertiary),
+              const SizedBox(height: AppTheme.space16),
+              const Text(
+                'Rôle non pris en charge',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppTheme.space8),
+              Text(
+                'Votre compte n\'a pas de rôle reconnu par cette version de '
+                'l\'application. Contactez un administrateur.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: AppTheme.space24),
+              FilledButton.icon(
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Se déconnecter'),
+                onPressed: () async {
+                  await ref.read(authServiceProvider).logout();
+                  if (context.mounted) context.go(AppRouter.login);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

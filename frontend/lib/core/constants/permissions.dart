@@ -1,54 +1,57 @@
-/// Rôles utilisateur
-class UserRole {
-  static const String admin = 'Admin';
-  static const String technicien = 'Technician';
-}
+import 'package:novadis_cri/models/user_role.dart';
 
-/// Permissions disponibles
+/// Capacités de l'application — miroir exact de
+/// `backend/src/NovadisApi/Authorization/Capabilities.cs` (mêmes noms, même
+/// matrice). L'API reste seule garante des droits : ici on ne fait que masquer
+/// ce qu'elle refuserait.
+///
+/// Ne jamais tester un rôle directement (`role == 'Admin'`) : utiliser
+/// `permissionsProvider.hasPermission(Permission.x)`.
 class Permission {
-  // CRI permissions
-  static const String viewOwnCris = 'view_own_cris';
-  static const String viewAllCris = 'view_all_cris';
-  static const String createCri = 'create_cri';
-  static const String editOwnCri = 'edit_own_cri';
-  static const String editAnyCri = 'edit_any_cri';
-  static const String deleteOwnCri = 'delete_own_cri';
-  static const String deleteAnyCri = 'delete_any_cri';
-  static const String signCri = 'sign_cri';
-  static const String addPhotos = 'add_photos';
+  /// Créer / modifier ses CRI, signature client, photos.
+  static const String criCreate = 'CriCreate';
 
-  // Stats & Dashboard
-  static const String viewPersonalStats = 'view_personal_stats';
-  static const String viewGlobalDashboard = 'view_global_dashboard';
+  /// Lire les CRI de tous les techniciens (sinon : les siens).
+  static const String criReadAll = 'CriReadAll';
 
-  // Admin features
-  static const String manageUsers = 'manage_users';
-  static const String exportData = 'export_data';
-  static const String manageReferences = 'manage_references';
+  /// Modifier les brouillons et supprimer les CRI d'autrui.
+  static const String criManageAny = 'CriManageAny';
+
+  /// Statistiques personnelles.
+  static const String personalStats = 'PersonalStats';
+
+  /// Statistiques globales et tableaux de bord.
+  static const String globalStats = 'GlobalStats';
+
+  /// Exports portant sur tous les techniciens.
+  static const String exportAll = 'ExportAll';
+
+  /// Voir les documents exportés par tous.
+  static const String documentsReadAll = 'DocumentsReadAll';
+
+  /// Renommer / supprimer / partager les documents d'autrui.
+  static const String documentsManageAny = 'DocumentsManageAny';
+
+  /// Administration technique : import des sites, santé de l'API.
+  static const String systemAdmin = 'SystemAdmin';
 }
 
-/// Mapping des permissions par rôle
-const Map<String, Set<String>> rolePermissions = {
-  UserRole.technicien: {
-    Permission.viewOwnCris,
-    Permission.createCri,
-    Permission.editOwnCri,
-    Permission.deleteOwnCri,
-    Permission.viewPersonalStats,
-    Permission.addPhotos,
-    Permission.signCri,
+/// Matrice rôle → capacités (docs/plan-role-superviseur.md §4).
+const Map<UserRole, Set<String>> rolePermissions = {
+  UserRole.technician: {
+    Permission.criCreate,
+    Permission.personalStats,
   },
   UserRole.admin: {
-    Permission.viewOwnCris,
-    Permission.createCri,
-    Permission.editOwnCri,
-    Permission.viewPersonalStats,
-    Permission.viewAllCris,
-    Permission.editAnyCri,
-    Permission.deleteAnyCri,
-    Permission.viewGlobalDashboard,
-    Permission.manageUsers,
-    Permission.exportData,
-    Permission.manageReferences,
+    Permission.criCreate,
+    Permission.criReadAll,
+    Permission.criManageAny,
+    Permission.personalStats,
+    Permission.globalStats,
+    Permission.exportAll,
+    Permission.documentsReadAll,
+    Permission.documentsManageAny,
+    Permission.systemAdmin,
   },
+  UserRole.supervisor: {},
 };
