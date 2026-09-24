@@ -325,28 +325,27 @@ lib/
 
 ## Déploiement & CI/CD
 
-### Frontend (Vercel)
+Branches : `main` = **production** (seule à déployer), `dev` = développement (tests seulement).
+Procédure d'exploitation complète : `docs/deployment.md`.
 
-- Trigger : push sur `dev`
-- Build : `flutter build web`
-- URL : `https://cri-novadis.tech`
-- Workflow : `.github/workflows/deploy-vercel.yml`
+### Tests CI (`ci-tests.yml`)
 
-### Backend (Serveur Windows interne)
+- Déclencheurs : PR vers `main`/`dev`, push sur `dev`, et **appel par les deux workflows de déploiement** (`workflow_call`)
+- Backend : `dotnet test` ; Frontend : `flutter analyze` + `flutter test` (Flutter épinglé 3.41.4)
+- Sur `main`, un test en échec **bloque** le déploiement (`needs: tests`)
 
-- Trigger : push sur `dev` (modifications backend uniquement)
-- Build : `dotnet publish -c Release`
-- Déploiement :
-  1. Arrêt service `NovadisApi`
-  2. Copie des fichiers publiés (`.env` préservé)
-  3. Redémarrage service
-  4. Smoke test : GET `http://localhost:5200/api/health/live` → 200
-- Workflow : `.github/workflows/deploy-api.yml`
-- Credentials : clé SSH + username `Administrateur` (GitHub Secrets)
+### Frontend (`deploy-vercel.yml`)
 
-### Tests CI
+- Push sur `main` touchant `frontend/**` → tests → `vercel deploy --prod` → `https://cri-novadis.tech`
 
-- Trigger : push/PR sur `master` ou `dev`
-- Backend : `dotnet test`
-- Frontend : `flutter analyze` + `flutter test`
-- Workflow : `.github/workflows/ci-tests.yml`
+### Backend (`deploy-api.yml` + `scripts/deploy-remote.sh`)
+
+- Push sur `main` touchant `backend/**`, `docker-compose.yml` ou le script ; ou lancement manuel
+- Tests → image `cri-novadis-api:<sha>` → scp vers le serveur → `deploy-remote.sh` :
+  1. mémorise l'image en service
+  2. dump pré-déploiement `backups/db_predeploy_<date>_<sha7>.sql.gz` (**bloquant** : les migrations s'appliquent au démarrage)
+  3. `docker load`, retag `:latest`, `docker compose up -d`
+  4. attente `/api/health/ready` = 200 (150 s max)
+  5. échec → journaux, retour sur l'image précédente, job en **échec**
+- Conserve les 5 dernières images taguées ; `concurrency` : un seul déploiement à la fois
+- ⚠️ Le retour arrière d'image ne défait pas une migration : restaurer le dump pré-déploiement si besoin

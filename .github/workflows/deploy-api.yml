@@ -10,15 +10,25 @@ on:
     paths:
       - "backend/**"
       - "docker-compose.yml"
+      - "scripts/deploy-remote.sh"
       - ".github/workflows/deploy-api.yml"
+
+# Deux déploiements simultanés se disputeraient l'image :latest et le retour arrière.
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
 
 env:
   IMAGE_NAME: cri-novadis-api
-  IMAGE_TAG: latest
   REMOTE_DIR: /opt/cri-novadis
 
 jobs:
+  tests:
+    uses: ./.github/workflows/ci-tests.yml
+
   deploy:
+    # Pas de mise en production si un test échoue.
+    needs: tests
     runs-on: ubuntu-latest
 
     steps:
@@ -27,11 +37,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Image taguée par SHA de commit : c'est ce qui rend le retour arrière
+      # possible. deploy-remote.sh la retague :latest sur le serveur.
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
           context: ./backend/src/NovadisApi
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           outputs: type=docker,dest=/tmp/${{ env.IMAGE_NAME }}.tar
 
       - name: Configure SSH
@@ -41,37 +53,20 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Transfer image to VPS
+      - name: Transfer image, compose file and deploy script
         run: |
           scp /tmp/${{ env.IMAGE_NAME }}.tar \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/${{ env.IMAGE_NAME }}.tar
+          scp docker-compose.yml scripts/deploy-remote.sh \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.REMOTE_DIR }}/
 
-      - name: Transfer docker-compose.yml
+      # Dump de la base, redémarrage, attente de /api/health/ready, et retour
+      # arrière automatique sur l'image précédente en cas d'échec.
+      # Le job échoue dans ce dernier cas : un retour arrière reste un incident.
+      - name: Deploy with automatic rollback
         run: |
-          scp docker-compose.yml \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.REMOTE_DIR }}/docker-compose.yml
-
-      - name: Load image and restart services on VPS
-        run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} bash <<EOF
-            set -e
-            docker load -i /tmp/${{ env.IMAGE_NAME }}.tar
-            rm /tmp/${{ env.IMAGE_NAME }}.tar
-            cd ${{ env.REMOTE_DIR }}
-            docker compose up -d --remove-orphans
-            docker compose ps
-          EOF
-
-      - name: Smoke test
-        run: |
-          sleep 10
-          STATUS=$(ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "curl -s -o /dev/null -w '%{http_code}' http://localhost:5200/api/health/live")
-          if [ "$STATUS" != "200" ]; then
-            echo "Smoke test failed: API returned $STATUS"
-            exit 1
-          fi
-          echo "Smoke test passed: API is alive (200)"
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "bash ${{ env.REMOTE_DIR }}/deploy-remote.sh /tmp/${{ env.IMAGE_NAME }}.tar ${{ github.sha }}"
 
       - name: Cleanup SSH
         if: always()
