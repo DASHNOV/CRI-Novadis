@@ -15,7 +15,10 @@ import 'package:novadis_cri/core/theme/theme_provider.dart';
 /// Ecran de connexion
 /// Authentification par email avec code de verification
 class LoginScreen extends HookConsumerWidget {
-  const LoginScreen({super.key});
+  /// Destination demandée avant la redirection vers la connexion.
+  final String? from;
+
+  const LoginScreen({super.key, this.from});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,7 +50,7 @@ class LoginScreen extends HookConsumerWidget {
           ref.invalidate(userRoleProvider);
           ref.invalidate(userIdProvider);
           if (context.mounted) {
-            context.go(AppRouter.home);
+            context.go(AppRouter.afterLogin(from));
           }
           return;
         }
@@ -55,7 +58,10 @@ class LoginScreen extends HookConsumerWidget {
         // Sinon, envoyer le code OTP
         await authService.login(email);
         if (context.mounted) {
-          context.push('${AppRouter.verifyOtp}?email=$email');
+          context.push(Uri(path: AppRouter.verifyOtp, queryParameters: {
+            'email': email,
+            if (from != null) 'from': from!,
+          }).toString());
         }
       } catch (e) {
         if (context.mounted) {

@@ -54,6 +54,20 @@ void main() {
       expect(e.statusCode, 400);
     });
 
+    test('un 403 sans message annonce un manque de droits, pas un code HTTP',
+        () {
+      final e = ApiException.fromDio(_dioError(status: 403, data: ''));
+      expect(e.message, contains('droits'));
+      expect(e.statusCode, 403);
+    });
+
+    test("un 403 porteur d'un message métier le conserve", () {
+      final e = ApiException.fromDio(
+        _dioError(status: 403, data: {'message': "CRI d'un autre technicien"}),
+      );
+      expect(e.message, "CRI d'un autre technicien");
+    });
+
     test('retombe sur le code HTTP quand le corps ne porte pas de message', () {
       final e = ApiException.fromDio(_dioError(status: 413, data: 'nope'));
       expect(e.message, contains('413'));

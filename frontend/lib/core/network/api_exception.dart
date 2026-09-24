@@ -64,6 +64,15 @@ class ApiException implements Exception {
         return ApiException(title, statusCode: status);
       }
     }
+    // 403 sans message métier (refus d'une policy [Authorize]) : le jeton est
+    // valide, c'est le droit qui manque — l'intercepteur ne rafraîchit pas et
+    // l'écran reste en place, seul le message doit être explicite.
+    if (status == 403) {
+      return const ApiException(
+        "Vous n'avez pas les droits nécessaires pour cette action.",
+        statusCode: 403,
+      );
+    }
     if (status != null) {
       return ApiException(
         'Le serveur a refusé la requête (HTTP $status)',
