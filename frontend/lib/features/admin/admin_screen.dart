@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:novadis_cri/core/constants/permissions.dart';
 import 'package:novadis_cri/models/user_role.dart';
 import 'package:novadis_cri/core/storage/storage_service.dart';
 import 'package:novadis_cri/core/config/app_router.dart';
@@ -125,10 +126,14 @@ class AdminScreen extends HookConsumerWidget {
             ),
             const SizedBox(height: AppTheme.space24),
 
-            const _SectionLabel('Signature'),
-            const SizedBox(height: AppTheme.space12),
-            const _SavedSignatureSection(),
-            const SizedBox(height: AppTheme.space24),
+            // La signature enregistrée sert à signer ses propres CRI : inutile
+            // sans droit de création (superviseur).
+            if (ref.watch(permissionsProvider).hasPermission(Permission.criCreate)) ...[
+              const _SectionLabel('Signature'),
+              const SizedBox(height: AppTheme.space12),
+              const _SavedSignatureSection(),
+              const SizedBox(height: AppTheme.space24),
+            ],
 
             const _SectionLabel('Apparence'),
             const SizedBox(height: AppTheme.space12),
