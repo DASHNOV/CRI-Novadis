@@ -18,6 +18,12 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-09-24] Extension `unaccent` créée par aucune migration — recherche de sites KO sur base neuve
+- **Symptôme** : risque latent, découvert en préparant l'étape 4.4. Sur une base provisionnée par les migrations (environnement neuf, reprise après sinistre sans dump), `GET /api/Sites/search` échouait : `function unaccent(text) does not exist`. En production, l'extension avait été créée à la main.
+- **Cause** : `NovadisDbContext` mappe `Unaccent()` sur la fonction PostgreSQL `unaccent` (`HasDbFunction`), mais rien ne déclarait l'extension. Même famille que l'incident des migrations du 2026-09-07 : un état de production obtenu hors migrations, invisible tant que la base n'est pas reconstruite.
+- **Correctif** : `modelBuilder.HasPostgresExtension("unaccent")` (et `pg_trgm`), migration `AddSearchExtensionsAndTrigramIndexes` générée par la CLI — `CREATE EXTENSION IF NOT EXISTS`, sans effet là où elle existe déjà. Vérifié sur base neuve : `unaccent('Évry')` répond.
+- **Prévention** : toute fonction ou extension PostgreSQL utilisée par le code (`HasDbFunction`, `EF.Functions.*` spécifiques) doit être déclarée dans le modèle. Test de contrôle : migrer une base vide et exercer les endpoints de recherche.
+
 ## [2026-09-24] Policy `TechnicianOrAdmin` jamais appliquée + rôle inconnu traité en technicien
 - **Symptôme** : risque latent, découvert en préparant le rôle Superviseur. Tout compte authentifié, quel que soit son rôle, pouvait créer / modifier des CRI : `CRIController`, `ExportController`, `ExportedDocumentsController`, `SitesController`… n'avaient que `[Authorize]`. `docs/architecture.md` affirmait pourtant « TechnicianOrAdmin ».
 - **Cause** : policy déclarée dans `Program.cs` mais référencée nulle part ; droits exprimés par ~15 `IsInRole("Admin")` épars + un filtre maison `RoleAuthorizeAttribute`. En parallèle, `UserRoleExtensions.FromString` (back) et `UserRole.fromString` (front) repliaient toute valeur inconnue sur Technician → un rôle mal saisi (ou un nouveau rôle avant mise à jour du code) donnait le droit de créer des CRI.

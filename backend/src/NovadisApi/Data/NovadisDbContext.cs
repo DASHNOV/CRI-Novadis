@@ -37,6 +37,12 @@ namespace NovadisApi.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Extensions requises par les requêtes : unaccent (recherche de sites) et
+            // pg_trgm (index des autocomplétions). unaccent n'était créée par aucune
+            // migration : une base neuve faisait échouer /api/Sites/search.
+            modelBuilder.HasPostgresExtension("unaccent");
+            modelBuilder.HasPostgresExtension("pg_trgm");
+
             modelBuilder
                 .HasDbFunction(typeof(NovadisDbContext).GetMethod(nameof(Unaccent), new[] { typeof(string) })!)
                 .HasName("unaccent");
