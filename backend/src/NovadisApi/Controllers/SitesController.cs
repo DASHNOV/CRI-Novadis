@@ -6,6 +6,7 @@ using NovadisApi.Models;
 using NovadisApi.Models.DTOs;
 using System.Globalization;
 using System.Text;
+using NovadisApi.Authorization;
 
 namespace NovadisApi.Controllers
 {
@@ -91,7 +92,7 @@ namespace NovadisApi.Controllers
         /// Import des sites depuis le CSV (admin uniquement).
         /// </summary>
         [HttpPost("import")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = Capabilities.SystemAdmin)]
         public async Task<ActionResult<ApiResponse<object>>> ImportSites()
         {
             try

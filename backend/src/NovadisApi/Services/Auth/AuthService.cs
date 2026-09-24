@@ -39,9 +39,10 @@ public sealed class AuthService : IAuthService
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower(), ct);
 
-        if (user == null || !user.IsActive)
+        if (user == null || !user.CanSignIn())
         {
-            _logger.LogWarning("Login failed: User not found or inactive - {Email}", request.Email);
+            _logger.LogWarning("Login failed: User not found, inactive or unknown role - {Email} (role: {Role})",
+                request.Email, user?.Role);
             return AuthResult<LoginResponse>.Failure(
                 AuthErrorCode.UserNotFound,
                 "Aucun compte associé à cette adresse email.");
@@ -103,7 +104,7 @@ public sealed class AuthService : IAuthService
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower(), ct);
 
-        if (user == null || !user.IsActive)
+        if (user == null || !user.CanSignIn())
             return AuthResult<AuthResponseDto>.Failure(AuthErrorCode.UserNotFound, "Email ou code invalide.");
 
         var authAttempt = await _context.AuthAttempts
@@ -166,9 +167,9 @@ public sealed class AuthService : IAuthService
         }
 
         var user = userToken.User!;
-        if (!user.IsActive)
+        if (!user.CanSignIn())
         {
-            _logger.LogWarning("User {Email} is inactive", user.Email);
+            _logger.LogWarning("User {Email} is inactive or has unknown role {Role}", user.Email, user.Role);
             return AuthResult<AuthResponseDto>.Failure(AuthErrorCode.AccountInactive, "Compte désactivé.");
         }
 
@@ -212,7 +213,7 @@ public sealed class AuthService : IAuthService
     {
         var user = await _context.Users.FindAsync(new object[] { userId }, ct);
 
-        if (user == null || !user.IsActive)
+        if (user == null || !user.CanSignIn())
             return AuthResult<UserDto>.Failure(AuthErrorCode.UserNotFound, "Utilisateur introuvable");
 
         return AuthResult<UserDto>.Success(MapUser(user));
@@ -239,7 +240,7 @@ public sealed class AuthService : IAuthService
         }
 
         var user = userToken.User!;
-        if (!user.IsActive)
+        if (!user.CanSignIn())
             return AuthResult<AuthResponseDto>.Failure(AuthErrorCode.AccountInactive, "Compte désactivé.");
 
         userToken.IsRevoked = true;

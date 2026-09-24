@@ -6,6 +6,7 @@ using NovadisApi.Services.Export;
 using NovadisApi.Services.Storage;
 using System.Security.Claims;
 using System.Text.Json;
+using NovadisApi.Authorization;
 
 namespace NovadisApi.Controllers
 {
@@ -51,7 +52,7 @@ namespace NovadisApi.Controllers
 
             try
             {
-                var result = await _xlsx.GenerateSingleCriAsync(id, userId.Value, User.IsInRole("Admin"));
+                var result = await _xlsx.GenerateSingleCriAsync(id, userId.Value, User.HasCapability(Capabilities.ExportAll));
                 if (result == null)
                 {
                     _logger.LogWarning("XLSX export: CRI {Id} introuvable ou accès refusé pour {User}", id, userId);
@@ -108,7 +109,7 @@ namespace NovadisApi.Controllers
             var reference = (date ?? DateTime.UtcNow).Date;
             try
             {
-                var result = await _xlsx.GeneratePeriodAsync(period, reference, userId.Value, User.IsInRole("Admin"), detailLevel);
+                var result = await _xlsx.GeneratePeriodAsync(period, reference, userId.Value, User.HasCapability(Capabilities.ExportAll), detailLevel);
 
                 var objectKey = BuildObjectKey(userId.Value, result.Filename);
                 await _storage.UploadAsync(objectKey, result.Bytes, XlsxMime, ct);
@@ -117,7 +118,7 @@ namespace NovadisApi.Controllers
                 var metadata = JsonSerializer.Serialize(new
                 {
                     range = period.ToString().ToLowerInvariant(),
-                    scope = User.IsInRole("Admin") ? "global" : "personnel",
+                    scope = User.HasCapability(Capabilities.ExportAll) ? "global" : "personnel",
                     referenceDate = reference,
                     detailLevel = detailLevel.ToString().ToLowerInvariant(),
                 });

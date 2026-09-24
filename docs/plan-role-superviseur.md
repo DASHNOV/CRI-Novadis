@@ -60,25 +60,25 @@ Règles invariantes (inchangées) :
 ## 5. Étapes
 
 ### Phase 0 — Préparation
-- [ ] `git checkout dev && git pull && git checkout -b feat/role-superviseur`
-- [ ] Relire `docs/resolved-issues.md` (entrées rôles 2026-09-24 et CRI Input DTO phase 1.3).
-- [ ] Lancer `dotnet test` + `flutter analyze` : état vert de référence.
+- [x] `git checkout dev && git pull && git checkout -b feat/role-superviseur`
+- [x] Relire `docs/resolved-issues.md` (entrées rôles 2026-09-24 et CRI Input DTO phase 1.3).
+- [x] Lancer `dotnet test` + `flutter analyze` : état vert de référence.
 
 ### Phase 1 — Back : capacités, **sans changement de comportement** (Technician / Admin)
-- [ ] `Models/UserRole.cs` : ajouter `Supervisor` à l'enum ; `FromString` → **`UserRole?`** (valeur inconnue = `null`, plus de repli silencieux sur Technician) ; `ToRoleString` / `Normalize` gèrent `Supervisor`.
-- [ ] `JwtService` / `AuthService` : rôle inconnu → connexion refusée (message explicite + log warning), au lieu d'émettre un jeton.
-- [ ] Nouveau `Authorization/Capabilities.cs` : constantes des capacités + table `RoleCapabilities` (matrice §4) — **seule source de vérité**.
-- [ ] `Program.cs` : enregistrer une policy par capacité à partir de la table (boucle) ; supprimer `AdminOnly` / `TechnicianOrAdmin`.
-- [ ] Extension `ClaimsPrincipal.HasCapability(string)` pour les contrôles inline (visibilité / propriété).
-- [ ] Remplacer chaque contrôle (inventaire au 2026-09-24) :
+- [x] `Models/UserRole.cs` : ajouter `Supervisor` à l'enum ; `FromString` → **`UserRole?`** (valeur inconnue = `null`, plus de repli silencieux sur Technician) ; `ToRoleString` / `Normalize` gèrent `Supervisor`.
+- [x] `JwtService` / `AuthService` : rôle inconnu → connexion refusée (message explicite + log warning), au lieu d'émettre un jeton.
+- [x] Nouveau `Authorization/Capabilities.cs` : constantes des capacités + table `RoleCapabilities` (matrice §4) — **seule source de vérité**.
+- [x] `Program.cs` : enregistrer une policy par capacité à partir de la table (boucle) ; supprimer `AdminOnly` / `TechnicianOrAdmin`.
+- [x] Extension `ClaimsPrincipal.HasCapability(string)` pour les contrôles inline (visibilité / propriété).
+- [x] Remplacer chaque contrôle (inventaire au 2026-09-24) :
   - `CRIController.cs` : l.60 → `CriReadAll` · l.108 → `CriReadAll` · l.130 (POST, CRI existant) → `CriManageAny` · l.196 → `CriManageAny` · l.258 (DELETE) → `CriManageAny` · l.329 (upload photo) → `CriManageAny` · l.393 (GET photo) → `CriReadAll` · l.419 (DELETE photo) → `CriManageAny`.
   - Attributs d'action : `[Authorize(Policy = CriCreate)]` sur `POST /cri`, `PUT /cri/{id}`, `PATCH signature`, `DELETE /cri/{id}`, `POST/DELETE photos`. **Comble le trou de la policy non appliquée.**
   - `ExportController.cs` l.54, 111, 120 → `ExportAll`. Renommer le paramètre `isAdmin` de `XlsxExportService` en `allTechnicians` (l.17, 18, 56, 238 et usages).
   - `ExportedDocumentsController.cs` l.67 → `DocumentsReadAll` (liste) ; l.128 (download) → `DocumentsReadAll` ; l.160, 180, 200 (rename / delete / mark-shared) → `DocumentsManageAny`.
   - `GlobalStatsController` → `[Authorize(Policy = GlobalStats)]` · `PersonalStatsController` → `PersonalStats` · `HealthController` l.41, 127 + `SitesController` l.94 → `SystemAdmin`.
-- [ ] Supprimer `Attributes/RoleAuthorizeAttribute.cs` une fois plus référencé. Supprimer `User.IsAdmin()` / `IsTechnician()` si inutilisés.
-- [ ] Tests d'intégration : pour chaque endpoint de la matrice, Technician et Admin → même code HTTP qu'avant. `dotnet test` vert.
-- [ ] Commit : `Refactor(auth): autorisations par capacité`.
+- [x] Supprimer `Attributes/RoleAuthorizeAttribute.cs` une fois plus référencé. Supprimer `User.IsAdmin()` / `IsTechnician()` si inutilisés.
+- [x] Tests d'intégration : pour chaque endpoint de la matrice, Technician et Admin → même code HTTP qu'avant. `dotnet test` vert.
+- [x] Commit : `Refactor(auth): autorisations par capacité`.
 
 ### Phase 2 — Back : activer `Supervisor`
 - [ ] Ajouter la colonne Supervisor dans `RoleCapabilities` (matrice §4).

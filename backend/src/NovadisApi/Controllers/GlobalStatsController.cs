@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NovadisApi.Attributes;
 using NovadisApi.Models.DTOs;
 using NovadisApi.Services.Stats;
+using NovadisApi.Authorization;
 
 namespace NovadisApi.Controllers
 {
@@ -13,7 +13,7 @@ namespace NovadisApi.Controllers
     [ApiController]
     [Route("api/global")]
     [Authorize]
-    [RoleAuthorize("Admin")]
+    [Authorize(Policy = Capabilities.GlobalStats)]
     public class GlobalStatsController : ControllerBase
     {
         private readonly IGlobalStatsService _stats;

@@ -6,6 +6,7 @@ using NovadisApi.Models;
 using NovadisApi.Services.Storage;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using NovadisApi.Authorization;
 
 namespace NovadisApi.Controllers
 {
@@ -64,13 +65,13 @@ namespace NovadisApi.Controllers
             var userId = GetCurrentUserId();
             if (userId == null) return Unauthorized();
 
-            var isAdmin = User.IsInRole("Admin");
+            var canReadAll = User.HasCapability(Capabilities.DocumentsReadAll);
 
             IQueryable<ExportedDocument> query = _db.ExportedDocuments
                 .Include(d => d.User)
                 .AsNoTracking();
 
-            if (!isAdmin)
+            if (!canReadAll)
             {
                 query = query.Where(d => d.UserId == userId.Value);
             }
@@ -125,7 +126,7 @@ namespace NovadisApi.Controllers
             var doc = await _db.ExportedDocuments.FirstOrDefaultAsync(d => d.Id == id, ct);
             if (doc == null) return NotFound();
 
-            if (!User.IsInRole("Admin") && doc.UserId != userId.Value)
+            if (!User.HasCapability(Capabilities.DocumentsReadAll) && doc.UserId != userId.Value)
             {
                 return Forbid();
             }
@@ -157,7 +158,7 @@ namespace NovadisApi.Controllers
             var doc = await _db.ExportedDocuments.FirstOrDefaultAsync(d => d.Id == id, ct);
             if (doc == null) return NotFound();
 
-            if (!User.IsInRole("Admin") && doc.UserId != userId.Value)
+            if (!User.HasCapability(Capabilities.DocumentsManageAny) && doc.UserId != userId.Value)
             {
                 return Forbid();
             }
@@ -177,7 +178,7 @@ namespace NovadisApi.Controllers
             var doc = await _db.ExportedDocuments.FirstOrDefaultAsync(d => d.Id == id, ct);
             if (doc == null) return NotFound();
 
-            if (!User.IsInRole("Admin") && doc.UserId != userId.Value)
+            if (!User.HasCapability(Capabilities.DocumentsManageAny) && doc.UserId != userId.Value)
             {
                 return Forbid();
             }
@@ -197,7 +198,7 @@ namespace NovadisApi.Controllers
             var doc = await _db.ExportedDocuments.FirstOrDefaultAsync(d => d.Id == id, ct);
             if (doc == null) return NotFound();
 
-            if (!User.IsInRole("Admin") && doc.UserId != userId.Value)
+            if (!User.HasCapability(Capabilities.DocumentsManageAny) && doc.UserId != userId.Value)
             {
                 return Forbid();
             }

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using NovadisApi.Attributes;
 using NovadisApi.Data;
+using NovadisApi.Authorization;
 
 namespace NovadisApi.Controllers
 {
@@ -38,7 +38,7 @@ namespace NovadisApi.Controllers
         /// Readiness probe enrichie : DB, latence, espace disque, mémoire.
         /// </summary>
         [HttpGet]
-        [RoleAuthorize("Admin")]
+        [Authorize(Policy = Capabilities.SystemAdmin)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -124,7 +124,7 @@ namespace NovadisApi.Controllers
         /// Statistiques détaillées de la base de données
         /// </summary>
         [HttpGet("stats")]
-        [RoleAuthorize("Admin")]
+        [Authorize(Policy = Capabilities.SystemAdmin)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
