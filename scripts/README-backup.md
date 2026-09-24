@@ -43,8 +43,8 @@ Une sauvegarde stockée sur la machine qu'elle protège n'en est pas une : une p
 (disque, incident hébergeur, suppression accidentelle du serveur) emporte les données **et**
 leurs sauvegardes. Le script copie donc `backups/` vers un stockage objet externe.
 
-Tant que `rclone` n'est pas configuré, le script **continue de fonctionner** mais affiche un
-avertissement sur `stderr` — visible dans `backup.log` et dans le mail de cron.
+Tant que `rclone` n'est pas configuré, le script produit les archives locales puis **sort en
+échec** (code 1, heartbeat `/fail`) : une sauvegarde restée sur le VPS n'est pas un succès.
 
 ### Configuration sur le VPS
 
@@ -109,6 +109,30 @@ sudo rclone copy /opt/cri-novadis/backups offsite:cri-novadis-backups \
 - **Identifiants hors dépôt** : ils vivent dans `~/.config/rclone/rclone.conf` sur le serveur.
 - **Cycle de vie côté bucket** : rétention 90 jours, suppression automatique au-delà
   (la rétention locale de 14 jours ne s'applique qu'au VPS).
+
+## Alerte par heartbeat
+
+Une sauvegarde qui cesse ne produit aucune erreur visible : le cron ne tourne plus, rclone
+perd sa configuration, le disque est plein — et l'on s'en aperçoit le jour de la restauration.
+Le script émet donc un signal à chaque exécution ; c'est **l'absence** de signal qui alerte.
+
+| Appel | Quand |
+|---|---|
+| `<url>/start` | Au lancement |
+| `<url>` | Succès complet, copie hors site comprise |
+| `<url>/fail` | Toute commande en échec, **ou** copie hors site non effectuée |
+
+Mise en place (healthchecks.io, offre gratuite suffisante) :
+
+1. Créer un check « cri-novadis-backup » : période **1 jour**, délai de grâce **2 heures**,
+   notifications e-mail **et** SMS/Telegram.
+2. Ajouter l'URL de ping dans `/opt/cri-novadis/.env` :
+   `BACKUP_HEARTBEAT_URL=https://hc-ping.com/<uuid>` (le cron de root n'hérite d'aucune
+   variable : le script lit ce fichier lui-même).
+3. Tester **en root** : `sudo /opt/cri-novadis/backup-server.sh`, puis vérifier que le
+   check passe au vert. Un `/fail` volontaire : `sudo OFFSITE_REMOTE=inexistant ./backup-server.sh`.
+
+Un ping perdu (réseau) n'interrompt jamais la sauvegarde : il est seulement signalé dans le log.
 
 ## Vérifier que la sauvegarde est restaurable
 

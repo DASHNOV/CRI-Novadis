@@ -112,7 +112,7 @@ Désactivé en environnement `Test`.
 | `SitesController` | `api/sites` | Authentifié ; `POST /import` → `SystemAdmin` |
 | `SiteSummaryController` | `api/sites` | Authentifié |
 | `UsersController` | `api/users` | Authentifié (`technicians`, `me`, `me/signature`) |
-| `HealthController` | `api/health` | `SystemAdmin` (sauf `/live`, public) |
+| `HealthController` | `api/health` | `SystemAdmin` (sauf `/live` et `/ready`, publics) |
 
 - Une policy ASP.NET par capacité, générée depuis `Authorization/Capabilities.cs` (`RolesByCapability`) — seule source de vérité.
 - Contrôle inline (propriété) : `User.HasCapability(Capabilities.X)`.
