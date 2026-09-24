@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 
 import '../../../data/local/tables/cri_service_table.dart';
@@ -12,8 +13,56 @@ import '../../../data/local/tables/cri_projet_table.dart';
 import '../../../data/models/cri_projet_model.dart';
 import '../../../data/models/cri_service_model.dart';
 
+/// Largeur maximale d'une photo embarquée : une page A4 à 150 dpi en fait
+/// 1240 px. Au-delà, le PDF grossit sans aucun gain visible.
+const pdfPhotoMaxWidth = 1240;
+
+/// Ramène une photo à [pdfPhotoMaxWidth] px de large (JPEG qualité 85).
+/// Renvoie les octets d'origine si l'image est déjà assez petite ou illisible :
+/// mieux vaut une photo lourde qu'une photo absente.
+Uint8List downscaleForPdf(Uint8List bytes) {
+  try {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null || decoded.width <= pdfPhotoMaxWidth) return bytes;
+    final resized = img.copyResize(decoded,
+        width: pdfPhotoMaxWidth, interpolation: img.Interpolation.average);
+    return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+  } catch (_) {
+    return bytes;
+  }
+}
+
+/// Décode une image fournie en ligne plutôt que par un chemin de fichier.
+/// Remplace l'ancienne heuristique « plus de 500 caractères = base64 » :
+/// - `data:<type>;base64,<données>` : forme produite par l'app ;
+/// - base64 brut (anciens CRI) : reconnu à son alphabet et sa longueur, jamais
+///   à sa taille — un JPEG encodé commence d'ailleurs par « /9j/ », qui
+///   ressemble à un chemin absolu.
+/// Renvoie `null` si la valeur n'est pas une image en ligne (donc un chemin).
+Uint8List? decodeInlineImage(String value) {
+  if (value.startsWith('data:')) {
+    final comma = value.indexOf(',');
+    return comma < 0 ? null : base64Decode(value.substring(comma + 1).trim());
+  }
+  final compact = value.replaceAll(RegExp(r'\s'), '');
+  if (compact.length >= 64 &&
+      compact.length % 4 == 0 &&
+      RegExp(r'^[A-Za-z0-9+/]+={0,2}$').hasMatch(compact)) {
+    try {
+      return base64Decode(compact);
+    } on FormatException {
+      return null;
+    }
+  }
+  return null;
+}
+
 /// Mixin contenant toute la logique de construction PDF partagée entre natif et web.
 /// Ne dépend PAS de dart:io.
+///
+/// Utilisable hors de l'isolate principal (génération native en arrière-plan) :
+/// les seuls accès liés à l'isolate principal passent par [loadAssetBytes],
+/// que l'appelant remplace par des octets préchargés.
 mixin PdfBuilderCommon {
   // ─── Couleurs Novadis ───
   static const _blue = PdfColor.fromInt(0xFF0066CC);
@@ -42,11 +91,24 @@ mixin PdfBuilderCommon {
   pw.ImageProvider? _logo;
   pw.ThemeData? _pdfTheme;
 
+  /// Actifs lus par le document (logo, polices).
+  static const pdfAssetKeys = [
+    'assets/logos/novadis_logo_blanc.jpg',
+    'assets/fonts/Lato-Regular.ttf',
+    'assets/fonts/Lato-Bold.ttf',
+    'assets/fonts/Lato-Italic.ttf',
+  ];
+
+  /// Point d'extension : lecture d'un actif. `rootBundle` n'existe que dans
+  /// l'isolate principal ; la génération en arrière-plan fournit les octets
+  /// préchargés.
+  Future<Uint8List> loadAssetBytes(String key) async =>
+      (await rootBundle.load(key)).buffer.asUint8List();
+
   Future<void> loadLogo() async {
     if (_logo != null) return;
     try {
-      final logoData = await rootBundle.load('assets/logos/novadis_logo_blanc.jpg');
-      _logo = pw.MemoryImage(logoData.buffer.asUint8List());
+      _logo = pw.MemoryImage(await loadAssetBytes(pdfAssetKeys[0]));
     } catch (e) {
       debugPrint('[PDF] Logo non trouvé: $e');
     }
@@ -59,13 +121,12 @@ mixin PdfBuilderCommon {
   Future<pw.ThemeData> _loadPdfTheme() async {
     if (_pdfTheme != null) return _pdfTheme!;
     try {
-      final regularData = await rootBundle.load('assets/fonts/Lato-Regular.ttf');
-      final boldData = await rootBundle.load('assets/fonts/Lato-Bold.ttf');
-      final italicData = await rootBundle.load('assets/fonts/Lato-Italic.ttf');
+      Future<ByteData> font(int i) async =>
+          ByteData.sublistView(await loadAssetBytes(pdfAssetKeys[i]));
       _pdfTheme = pw.ThemeData.withFont(
-        base: pw.Font.ttf(regularData),
-        bold: pw.Font.ttf(boldData),
-        italic: pw.Font.ttf(italicData),
+        base: pw.Font.ttf(await font(1)),
+        bold: pw.Font.ttf(await font(2)),
+        italic: pw.Font.ttf(await font(3)),
       );
     } catch (e) {
       debugPrint('[PDF] Police Unicode non trouvée, fallback Helvetica: $e');
@@ -83,16 +144,10 @@ mixin PdfBuilderCommon {
   Future<Uint8List?> _resolveSignatureBytes(String? signatureData) async {
     if (signatureData == null || signatureData.isEmpty) return null;
     try {
-      // Cas 1 : data URI base64 (ex: data:image/png;base64,...)
-      if (signatureData.startsWith('data:')) {
-        final cleanBase64 = signatureData.split(',').last;
-        return Uint8List.fromList(base64Decode(cleanBase64));
-      }
-      // Cas 2 : base64 brut (très long, pas un chemin)
-      if (signatureData.length > 500) {
-        return Uint8List.fromList(base64Decode(signatureData));
-      }
-      // Cas 3 : chemin de fichier — déléguer à la plateforme
+      // Cas 1 : image en ligne (data URI ou base64 brut des anciens CRI)
+      final inline = decodeInlineImage(signatureData);
+      if (inline != null) return inline;
+      // Cas 2 : chemin de fichier — déléguer à la plateforme
       final image = await resolveFilePhoto(signatureData);
       if (image != null) return image.bytes;
     } catch (e) {
@@ -1094,17 +1149,12 @@ mixin PdfBuilderCommon {
 
     for (final photoPath in photos) {
       try {
-        if (photoPath.startsWith('data:') ||
-            photoPath.startsWith('/9j/') ||
-            photoPath.length > 500) {
-          final cleanBase64 = photoPath.contains(',')
-              ? photoPath.split(',').last
-              : photoPath;
-          final bytes = base64Decode(cleanBase64);
-          validPhotos.add(pw.MemoryImage(Uint8List.fromList(bytes)));
-        } else {
-          final image = await resolveFilePhoto(photoPath);
-          if (image != null) validPhotos.add(image);
+        // Image en ligne, sinon chemin de fichier. Un chemin n'est jamais pris
+        // pour du base64 : son extension (« .jpg ») sort de l'alphabet base64.
+        final bytes = decodeInlineImage(photoPath) ??
+            (await resolveFilePhoto(photoPath))?.bytes;
+        if (bytes != null) {
+          validPhotos.add(pw.MemoryImage(downscaleForPdf(bytes)));
         }
       } catch (e) {
         debugPrint('[PDF] Erreur chargement photo: $e');

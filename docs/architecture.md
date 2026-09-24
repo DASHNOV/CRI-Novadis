@@ -241,6 +241,11 @@ lib/
   - Enveloppe un `FormBuilderTextField` (contrôleur partagé) → validation par étape inchangée. Stockage = **chaîne Markdown** dans le champ existant (rétrocompatible, aucun changement DB/API).
 - **Rendu** :
   - PDF : `pdf_builder_common._buildRichTextBlock` parse le Markdown (package `markdown`) → widgets `pw` (gras/italique/listes/titres), hauteur fixe + clip.
+- Génération PDF (étape 4.5) :
+  - Natif : mise en page + `save()` dans `Isolate.run` (`pdf_generator_native.dart`) ; logo et polices préchargés dans l'isolate principal (`rootBundle` indisponible ailleurs) via le point d'extension `loadAssetBytes` ; photos lues dans l'isolate
+  - Web : inchangé (pas d'isolate), mêmes règles de résolution
+  - Photos ramenées à 1240 px de large, JPEG q85 (`downscaleForPdf`) — A4 à 150 dpi
+  - Image en ligne vs chemin : `decodeInlineImage` (data URI, ou base64 brut reconnu à son alphabet) ; plus d'heuristique de longueur
   - Écran (détails/historique) : `MarkdownBody` (`flutter_markdown`).
   - XLSX (backend) : `XlsxExportService.StripMarkdown` retire la syntaxe → texte brut.
 - **Signature client** : `SignaturePadWidget.contextMarkdown` affiche le travail effectué (lecture seule, scrollable) dans la popup de signature, avant que le client signe.
