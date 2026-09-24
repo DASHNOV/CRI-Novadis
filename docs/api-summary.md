@@ -110,7 +110,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 | Méthode | Route | Paramètres | Description |
 |---------|-------|-----------|-------------|
 | GET | `/stats` | `?period=30` (jours) | KPI globaux (compteurs, répartitions, moyennes) |
-| GET | `/cris` | `?technicienId=&filter=&searchId=` | Tous les CRI enrichis avec infos technicien |
+| GET | `/cris` | `?technicienId=&filter=&searchId=` | Tous les CRI enrichis avec infos technicien — **sans `data` ni `technicianSignature`** (fiche complète : `GET /api/CRI/{id}`) ; `clientSignature` conservée (statut signé) |
 | GET | `/activity` | — | Activité par technicien (nb CRI 7j / 30j / total) |
 | GET | `/activity-chart` | — | Activité quotidienne sur 7 jours |
 | GET | `/technicians` | — | Liste des utilisateurs pour dropdown |
