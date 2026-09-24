@@ -24,14 +24,14 @@ namespace NovadisApi.Controllers
         public async Task<ActionResult<ApiResponse<IEnumerable<UserDto>>>> GetTechnicians()
         {
             var technicians = await _context.Users
-                .Where(u => (u.Role == "Technician" || u.Role == "Admin") && u.IsActive)
+                .Where(u => (u.Role == "Technician" || u.Role == "Technicien" || u.Role == "Admin") && u.IsActive)
                 .Select(u => new UserDto
                 {
                     Id = u.Id,
                     Email = u.Email,
                     FirstName = u.FirstName ?? string.Empty,
                     LastName = u.LastName ?? string.Empty,
-                    Role = u.Role,
+                    Role = UserRoleExtensions.Normalize(u.Role),
                     IsActive = u.IsActive,
                     LastLoginAt = u.LastLoginAt
                 })
@@ -59,7 +59,7 @@ namespace NovadisApi.Controllers
                 Email = user.Email,
                 FirstName = user.FirstName ?? string.Empty,
                 LastName = user.LastName ?? string.Empty,
-                Role = user.Role,
+                Role = UserRoleExtensions.Normalize(user.Role),
                 IsActive = user.IsActive,
                 LastLoginAt = user.LastLoginAt,
                 SavedSignature = user.SavedSignature

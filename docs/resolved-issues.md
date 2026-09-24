@@ -18,6 +18,17 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-09-24] Rôle « Technicien » / « Technician » incohérent + carte CRI dupliquée
+- **Symptôme** : risque latent, pas de panne constatée. Un compte stocké avec `Role = 'Technicien'` avait accès à `/api/personal` mais recevait 403 partout ailleurs (policies `TechnicianOrAdmin` = `"Technician"` seulement). Côté Flutter, `rolePermissions` était indexé sur `'Technicien'` alors que l'API renvoie `'Technician'` → un technicien n'avait **aucune** permission (sans effet visible : `ProtectedRoute` n'est utilisé nulle part).
+- **Cause** : `backend/database/migration_roles.sql` convertissait `Technician` → `Technicien` (sens inverse du code). Tolérances éparpillées (`PersonalStatsController`, `User.IsTechnician`, `GlobalStatsService`) au lieu d'une normalisation unique ; `JwtService` émettait `user.Role` brut.
+- **Correctif** :
+  - `UserRoleExtensions.Normalize()` ; appliqué au claim JWT (`JwtService`) et à tous les `UserDto.Role` (`AuthService`, `UsersController`, `GlobalStatsService`).
+  - `PersonalStatsController` : `[RoleAuthorize("Technician", "Admin")]`.
+  - `migration_roles.sql` réécrit (PostgreSQL, idempotent) : normalise vers `Technician` / `Admin`.
+  - Flutter : `UserRole.technicien = 'Technician'` + repli `'Technicien'` dans `PermissionsService`.
+  - Carte CRI factorisée : `features/history/widgets/cri_card.dart` (`CriCard`, `criModelFromMap`, `deleteCriDraft`) utilisée par `personal_history_screen.dart` et `global_history_screen.dart`. Chaque écran garde sa logique de droits (fiche détail, suppression serveur).
+- **Prévention** : rôles canoniques uniquement `Technician` / `Admin` ; tout rôle lu en base passe par `Normalize()`. Une seule carte CRI : toute évolution va dans `CriCard`, jamais dans les écrans.
+
 ## [2026-09-21] Brouillons non supprimables par les techniciens + badge « Non synchronisé » figé au retour du réseau
 
 Deux signalements terrain distincts, même racine d'analyse : l'écran technicien n'a jamais été aligné sur l'écran admin, et rien ne recharge une liste déjà construite.

@@ -166,7 +166,7 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 Email = u.Email,
                 FirstName = u.FirstName ?? "",
                 LastName = u.LastName ?? "",
-                Role = u.Role,
+                Role = UserRoleExtensions.Normalize(u.Role),
                 IsActive = u.IsActive,
                 LastLoginAt = u.LastLoginAt
             })

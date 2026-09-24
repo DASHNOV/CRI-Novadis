@@ -1,6 +1,7 @@
-ALTER TABLE Users 
-ADDWithDefault "Role" VARCHAR(50) DEFAULT 'Technicien';
+-- Normalisation des rôles utilisateur (PostgreSQL, idempotent).
+-- Valeurs canoniques : 'Technician' et 'Admin' — les seules connues des policies
+-- (Program.cs). L'ancienne version de ce script faisait l'inverse
+-- ('Technician' → 'Technicien') et coupait l'accès API des techniciens.
 
--- Update existing users
-UPDATE Users SET Role = 'Technicien' WHERE Role IS NULL OR Role = 'Technician';
-UPDATE Users SET Role = 'Admin' WHERE Role = 'Administrator';
+UPDATE "Users" SET "Role" = 'Technician' WHERE "Role" IS NULL OR "Role" IN ('Technicien', 'technicien', 'technician');
+UPDATE "Users" SET "Role" = 'Admin' WHERE "Role" IN ('admin', 'Administrator', 'Administrateur');

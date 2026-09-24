@@ -16,7 +16,7 @@ namespace NovadisApi.Controllers
     [ApiController]
     [Route("api/personal")]
     [Authorize]
-    [RoleAuthorize("Technicien", "Technician", "Admin")]
+    [RoleAuthorize("Technician", "Admin")]
     public class PersonalStatsController : ControllerBase
     {
         private readonly NovadisDbContext _context;

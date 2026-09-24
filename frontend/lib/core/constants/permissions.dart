@@ -1,7 +1,7 @@
 /// Rôles utilisateur
 class UserRole {
   static const String admin = 'Admin';
-  static const String technicien = 'Technicien';
+  static const String technicien = 'Technician';
 }
 
 /// Permissions disponibles

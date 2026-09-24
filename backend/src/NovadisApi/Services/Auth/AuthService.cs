@@ -312,7 +312,7 @@ public sealed class AuthService : IAuthService
         Email = user.Email,
         FirstName = user.FirstName,
         LastName = user.LastName,
-        Role = user.Role,
+        Role = UserRoleExtensions.Normalize(user.Role),
         IsActive = user.IsActive,
         LastLoginAt = user.LastLoginAt
     };

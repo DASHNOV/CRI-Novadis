@@ -202,6 +202,11 @@ Visibilité : **Admin voit/ouvre tous les documents** (tous techniciens), le DTO
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
 | GET | `/technicians` | ✅ | Liste des techniciens et admins actifs |
+| GET | `/me` | ✅ | Profil de l'utilisateur connecté (dont `savedSignature`) |
+| PUT | `/me/signature` | ✅ | Enregistre la signature de l'utilisateur connecté |
+
+> Aucune route de création / désactivation de compte : les utilisateurs se gèrent en base.
+> `role` est toujours renvoyé sous forme canonique (`Technician` / `Admin`).
 
 ---
 

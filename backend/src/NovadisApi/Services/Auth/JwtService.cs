@@ -43,7 +43,7 @@ namespace NovadisApi.Services.Auth
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
-                new Claim(ClaimTypes.Role, user.Role),
+                new Claim(ClaimTypes.Role, UserRoleExtensions.Normalize(user.Role)),
                 new Claim("userId", user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };

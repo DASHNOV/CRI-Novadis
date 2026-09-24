@@ -58,9 +58,10 @@ class PermissionsService {
 
   bool hasPermission(String permission) {
     if (_role == null) return false;
-    // Handle case sensitivity if needed, but constants should match
-    // Map role from DB (e.g. 'Technicien') to keys in rolePermissions
-    final permissions = rolePermissions[_role];
+    // L'API renvoie la forme canonique ('Technician'), mais un rôle stocké
+    // avant la normalisation peut encore valoir 'Technicien'.
+    final key = _role.toLowerCase() == 'technicien' ? UserRole.technicien : _role;
+    final permissions = rolePermissions[key];
     return permissions != null && permissions.contains(permission);
   }
 

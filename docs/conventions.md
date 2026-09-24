@@ -62,6 +62,7 @@ Controllers/ → Services (interface + impl) → NovadisDbContext → PostgreSQL
 - **Réponse API** : toujours `ApiResponse<T>.SuccessResponse(data)` / `ErrorResponse(msg)`
 - **Auth** : `[Authorize]` au niveau classe + `[AllowAnonymous]` par action si besoin
 - **Rôles** : `[RoleAuthorize("Admin")]` ou vérification inline `User.IsInRole("Admin")`
+- **Valeurs de rôle** : uniquement `"Technician"` et `"Admin"`. Tout rôle lu en base passe par `UserRoleExtensions.Normalize()` avant de sortir (JWT, DTO) — jamais `user.Role` brut
 - **User ID** : `User.FindFirst(ClaimTypes.NameIdentifier)?.Value` via helper `GetCurrentUserId()`
 
 ---

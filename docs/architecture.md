@@ -111,7 +111,7 @@ Désactivé en environnement `Test`.
 | `ExportedDocumentsController` | `api/exported-documents` | TechnicianOrAdmin |
 | `SitesController` | `api/sites` | TechnicianOrAdmin |
 | `SiteSummaryController` | `api/sites` | TechnicianOrAdmin |
-| `UsersController` | `api/users` | Admin |
+| `UsersController` | `api/users` | Authentifié (`technicians`, `me`, `me/signature`) |
 | `HealthController` | `api/health` | Admin (sauf `/live`, public) |
 
 ### Services enregistrés (DI)
@@ -204,7 +204,7 @@ lib/
 │   ├── home/                      # HomePage
 │   ├── dashboard/                 # MainDashboard, SiteDashboard, TechnicianDashboard
 │   ├── cri_form/                  # Saisie CRI (Projet + Service)
-│   ├── history/                   # Historique (perso + global)
+│   ├── history/                   # Historique (perso + global) — carte CRI partagée : widgets/cri_card.dart
 │   ├── documents/                 # Exports historique + sélection + PdfViewerPage (viewer in-app)
 │   ├── export/                    # Logique PDF/XLSX + opener multi-plateforme (document_opener_*)
 │   └── admin/                     # AdminScreen
@@ -293,7 +293,7 @@ lib/
 
 | Rôle | Accès |
 |------|-------|
-| `Admin` | Tous les CRI, stats globales, gestion utilisateurs, tous les dashboards |
+| `Admin` | Tous les CRI, stats globales, tous les dashboards, import sites, santé API. Pas de gestion utilisateurs via l'API (comptes gérés en base) |
 | `Technician` | Ses propres CRI uniquement, stats personnelles, dashboard perso |
 
 ---

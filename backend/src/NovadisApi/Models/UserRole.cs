@@ -25,6 +25,13 @@ namespace NovadisApi.Models
             };
         }
 
+        /// <summary>
+        /// Forme canonique d'un rôle stocké ("Technicien" → "Technician").
+        /// À utiliser partout où le rôle sort de la base (JWT, DTO) : les policies
+        /// ne connaissent que "Technician" et "Admin".
+        /// </summary>
+        public static string Normalize(string role) => FromString(role).ToRoleString();
+
         public static string ToRoleString(this UserRole role)
         {
             return role switch
