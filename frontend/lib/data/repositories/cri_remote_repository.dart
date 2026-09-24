@@ -216,6 +216,10 @@ class CriRemoteRepository {
   ApiException _handleError(DioException e) => ApiException.fromDio(e);
 
   /// Upload des photos vers le serveur après soumission d'un CRI (mobile uniquement).
+  ///
+  /// Lève une [ApiException] en cas d'échec : l'appelant laisse alors le CRI
+  /// « pending ». Rejouer est idempotent (le serveur ignore les photos déjà
+  /// reçues, reconnues par nom de fichier et taille).
   Future<void> uploadPhotos(String criId, List<String> localPaths) async {
     if (kIsWeb) return;
 
@@ -223,7 +227,11 @@ class CriRemoteRepository {
     for (final path in localPaths) {
       if (path.isEmpty) continue;
       final file = File(path);
-      if (!await file.exists()) continue;
+      if (!await file.exists()) {
+        // Fichier purgé de l'appareil : rien à renvoyer, ne pas bloquer le CRI.
+        debugPrint("Photo introuvable sur l'appareil, ignorée : $path");
+        continue;
+      }
       final mime = _getMimeType(path);
       formData.files.add(MapEntry(
         'files',
@@ -234,11 +242,21 @@ class CriRemoteRepository {
     }
     if (formData.files.isEmpty) return;
 
-    await _dio.post(
-      '/CRI/$criId/photos',
-      data: formData,
-      options: Options(contentType: 'multipart/form-data'),
-    );
+    try {
+      await _dio.post(
+        '/CRI/$criId/photos',
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+          // Les délais globaux (10 s d'envoi) sont taillés pour du JSON : quelques
+          // Mo de photos en 4G terrain les dépassaient, et l'échec était avalé.
+          sendTimeout: const Duration(minutes: 3),
+          receiveTimeout: const Duration(minutes: 1),
+        ),
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
   }
 
   String _getMimeType(String path) {

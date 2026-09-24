@@ -22,6 +22,7 @@ namespace NovadisApi.Controllers
         private readonly ISiteSummaryService _siteSummaryService;
 
         private static readonly string[] AllowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+        private const long MaxPhotoBytes = 10 * 1024 * 1024;
 
         public CRIController(NovadisDbContext context, ILogger<CRIController> logger, IWebHostEnvironment env, ISiteSummaryService siteSummaryService)
         {
@@ -360,16 +361,41 @@ namespace NovadisApi.Controllers
             if (files.Count == 0)
                 return BadRequest(ApiResponse<List<CRIPhoto>>.ErrorResponse("Aucun fichier fourni"));
 
+            // Validation AVANT toute écriture. Les fichiers invalides étaient ignorés
+            // en silence avec une réponse 200 : l'app les croyait envoyés, et ils
+            // étaient perdus. Un refus explicite remonte au technicien.
+            var rejected = files
+                .Select(f => (File: f, Reason:
+                    f.Length == 0 ? "fichier vide"
+                    : f.Length > MaxPhotoBytes ? $"{f.Length / 1024 / 1024} Mo, maximum {MaxPhotoBytes / 1024 / 1024} Mo"
+                    : !AllowedMimeTypes.Contains(f.ContentType?.ToLower() ?? string.Empty) ? $"type {f.ContentType} non accepté"
+                    : null))
+                .Where(r => r.Reason != null)
+                .ToList();
+            if (rejected.Count > 0)
+            {
+                var detail = string.Join(" ; ", rejected.Select(r => $"{r.File.FileName} ({r.Reason})"));
+                return BadRequest(ApiResponse<List<CRIPhoto>>.ErrorResponse($"Photo refusée : {detail}"));
+            }
+
+            // Idempotence : l'app rejoue l'envoi complet après un échec (délai dépassé
+            // alors que le serveur avait tout reçu, par exemple). Une photo déjà
+            // enregistrée pour ce CRI — même nom, même taille — n'est pas dupliquée.
+            var existing = (await _context.CRIPhotos
+                    .Where(p => p.CRIFormId == id)
+                    .Select(p => new { p.OriginalFileName, p.FileSize })
+                    .ToListAsync())
+                .Select(p => (p.OriginalFileName, p.FileSize))
+                .ToHashSet();
+
             var photosDir = GetPhotosDirectory(id);
             var created = new List<CRIPhoto>();
 
             foreach (var file in files)
             {
-                if (file.Length == 0 || file.Length > 10 * 1024 * 1024) continue;
+                if (!existing.Add((file.FileName, file.Length))) continue;
 
-                var mime = file.ContentType?.ToLower() ?? string.Empty;
-                if (!AllowedMimeTypes.Contains(mime)) continue;
-
+                var mime = file.ContentType!.ToLower();
                 var ext = mime switch
                 {
                     "image/png" => ".png",

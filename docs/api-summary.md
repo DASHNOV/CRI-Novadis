@@ -77,7 +77,7 @@ Auth requise sur tous les endpoints. Lecture : ses CRI, ou tous avec `CriReadAll
 | DELETE | `/{id}` | Supprimer un CRI |
 | GET | `/clients/search?q=` | Autocomplete clients (min 2 chars) — ses CRI seulement, tous avec `CriReadAll` |
 | GET | `/sites/search?q=&client=` | Autocomplete sites — même cloisonnement |
-| POST | `/{id}/photos` | Upload photos (multipart/form-data, max 50 MB) |
+| POST | `/{id}/photos` | Upload photos (multipart/form-data, max 50 Mo la requête, 10 Mo/fichier, jpeg/png/webp). **Idempotent** : photo déjà reçue (même nom + taille) ignorée. Fichier invalide → **400** motivé, rien d'enregistré |
 | GET | `/{id}/photos/{photoId}` | Télécharger une photo (binaire) |
 | DELETE | `/{id}/photos/{photoId}` | Supprimer une photo |
 
