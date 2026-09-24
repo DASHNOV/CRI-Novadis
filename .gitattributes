@@ -1,0 +1,4 @@
+# Scripts shell exécutés sur Linux (serveur, CI) : toujours LF, même dans une
+# copie de travail Windows. Un CRLF casse bash (« $'\r': command not found »)
+# dès que le fichier est copié par scp depuis le poste (cf. scripts/README-backup.md).
+*.sh text eol=lf

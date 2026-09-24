@@ -12,7 +12,12 @@ on:
       - ".github/workflows/deploy-vercel.yml"
 
 jobs:
+  tests:
+    uses: ./.github/workflows/ci-tests.yml
+
   deploy:
+    # Pas de mise en production si un test échoue.
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

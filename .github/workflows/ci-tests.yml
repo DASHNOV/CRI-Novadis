@@ -3,8 +3,12 @@ name: CI Tests
 on:
   pull_request:
     branches: [main, dev]
+  # Sur `main`, les tests sont lancés par deploy-api.yml et deploy-vercel.yml
+  # (workflow_call) et BLOQUENT le déploiement : les relancer ici en parallèle
+  # ne ferait que doubler le travail.
+  workflow_call:
   push:
-    branches: [main, dev]
+    branches: [dev]
     paths:
       - "backend/**"
       - "frontend/**"
