@@ -29,7 +29,6 @@ namespace NovadisApi.Controllers
         /// Recherche par nom du site, adresse, ville ou code postal.
         /// </summary>
         [HttpGet("search")]
-        [AllowAnonymous]
         public async Task<ActionResult<ApiResponse<IEnumerable<SiteDto>>>> SearchSites([FromQuery] string q)
         {
             if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
