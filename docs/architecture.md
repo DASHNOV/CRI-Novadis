@@ -100,6 +100,12 @@ NovadisApi/
 
 Désactivé en environnement `Test`.
 
+### Verrouillage OTP (`AuthService.GetLockoutAsync`)
+
+- ≥ `Auth:MaxFailedAttempts` (5) codes erronés sur `Auth:LockoutDurationMinutes` (30 min), toutes demandes de code confondues → **429** sur `/login` et `/verify`, même avec un code correct
+- Par e-mail, pas par IP (indépendant du rate limiting) — un tiers peut verrouiller un compte : compromis assumé
+- Connexion réussie → `FailedAttempts = 0` sur les tentatives de l'e-mail
+
 ### Contrôleurs
 
 | Contrôleur | Préfixe route | Autorisation (capacité) |

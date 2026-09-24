@@ -48,6 +48,12 @@ public sealed class AuthService : IAuthService
                 "Aucun compte associé à cette adresse email.");
         }
 
+        // Pas de nouveau code pendant le verrouillage : il serait refusé à la saisie,
+        // et l'utilisateur croirait à un code erroné.
+        var lockout = await GetLockoutAsync(user.Email, ct);
+        if (lockout != null)
+            return AuthResult<LoginResponse>.Failure(AuthErrorCode.AccountLocked, lockout);
+
         var code = _codeGenerator.GenerateCode(6);
         var codeHash = _codeGenerator.HashCode(code);
         var codeExpiry = _configuration.GetValue<int>("Auth:CodeExpiryMinutes", 10);
@@ -107,6 +113,12 @@ public sealed class AuthService : IAuthService
         if (user == null || !user.CanSignIn())
             return AuthResult<AuthResponseDto>.Failure(AuthErrorCode.UserNotFound, "Email ou code invalide.");
 
+        // Avant toute vérification : un code correct est refusé pendant le verrouillage,
+        // sans quoi l'essai exhaustif resterait possible.
+        var lockout = await GetLockoutAsync(user.Email, ct);
+        if (lockout != null)
+            return AuthResult<AuthResponseDto>.Failure(AuthErrorCode.AccountLocked, lockout);
+
         var authAttempt = await _context.AuthAttempts
             .Where(a => a.Email.ToLower() == request.Email.ToLower()
                 && !a.IsUsed
@@ -132,6 +144,15 @@ public sealed class AuthService : IAuthService
         }
 
         authAttempt.IsUsed = true;
+
+        // Remise à zéro : des échecs antérieurs à une connexion réussie ne doivent pas
+        // verrouiller le compte après coup.
+        var failedAttempts = await _context.AuthAttempts
+            .Where(a => a.Email.ToLower() == user.Email.ToLower() && a.FailedAttempts > 0)
+            .ToListAsync(ct);
+        foreach (var attempt in failedAttempts)
+            attempt.FailedAttempts = 0;
+
         await _context.SaveChangesAsync(ct);
 
         var response = await IssueTokensAsync(user, request.IpAddress, request.DeviceInfo, generateTrustedDevice: true, ct);
@@ -148,6 +169,30 @@ public sealed class AuthService : IAuthService
 
         _logger.LogInformation("User {Email} logged in successfully", user.Email);
         return AuthResult<AuthResponseDto>.Success(response);
+    }
+
+    /// <summary>
+    /// Verrouillage OTP : au-delà de <c>Auth:MaxFailedAttempts</c> codes erronés sur la
+    /// fenêtre <c>Auth:LockoutDurationMinutes</c>, toutes demandes confondues, l'e-mail est
+    /// verrouillé. Renvoie le message à afficher, ou <c>null</c> si le compte est libre.
+    /// Porte sur l'e-mail et non sur l'IP : un tiers peut donc verrouiller un compte
+    /// volontairement — compromis assumé (fenêtre courte, message explicite).
+    /// </summary>
+    private async Task<string?> GetLockoutAsync(string email, CancellationToken ct)
+    {
+        var maxAttempts = _configuration.GetValue("Auth:MaxFailedAttempts", 5);
+        var lockoutMinutes = _configuration.GetValue("Auth:LockoutDurationMinutes", 30);
+        var windowStart = DateTime.UtcNow.AddMinutes(-lockoutMinutes);
+
+        var recentFailures = await _context.AuthAttempts
+            .Where(a => a.Email.ToLower() == email.ToLower() && a.CreatedAt >= windowStart)
+            .SumAsync(a => a.FailedAttempts, ct);
+
+        if (recentFailures < maxAttempts)
+            return null;
+
+        _logger.LogWarning("Account locked for {Email} ({Count} failed attempts)", email, recentFailures);
+        return $"Trop de tentatives. Réessayez dans {lockoutMinutes} minutes.";
     }
 
     public async Task<AuthResult<AuthResponseDto>> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken ct = default)

@@ -201,6 +201,7 @@ namespace NovadisApi.Controllers
                 AuthErrorCode.InvalidToken => Unauthorized(response),
                 AuthErrorCode.AccountInactive => Unauthorized(response),
                 AuthErrorCode.DeviceNotRecognized => Unauthorized(response),
+                AuthErrorCode.AccountLocked => StatusCode(StatusCodes.Status429TooManyRequests, response),
                 AuthErrorCode.EmailDeliveryFailed => StatusCode(500, response),
                 _ => StatusCode(500, response)
             };
