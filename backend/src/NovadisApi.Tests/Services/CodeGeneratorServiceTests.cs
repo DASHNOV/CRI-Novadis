@@ -36,32 +36,60 @@ public class CodeGeneratorServiceTests
     }
 
     [Fact]
-    public void HashCode_SameInput_ProducesSameHash()
+    public void HashCode_SameInputAndSalt_ProducesSameHash()
     {
-        var h1 = _sut.HashCode("123456");
-        var h2 = _sut.HashCode("123456");
-        h1.Should().Be(h2);
+        var salt = _sut.GenerateSalt();
+        _sut.HashCode("123456", salt).Should().Be(_sut.HashCode("123456", salt));
     }
 
     [Fact]
     public void HashCode_DifferentInput_ProducesDifferentHash()
     {
-        var h1 = _sut.HashCode("123456");
-        var h2 = _sut.HashCode("654321");
-        h1.Should().NotBe(h2);
+        var salt = _sut.GenerateSalt();
+        _sut.HashCode("123456", salt).Should().NotBe(_sut.HashCode("654321", salt));
+    }
+
+    [Fact]
+    public void HashCode_SameCodeDifferentSalt_ProducesDifferentHash()
+    {
+        // Le sel par tentative interdit une table précalculée commune à toutes les tentatives.
+        _sut.HashCode("123456", _sut.GenerateSalt()).Should().NotBe(_sut.HashCode("123456", _sut.GenerateSalt()));
+    }
+
+    [Fact]
+    public void GenerateSalt_Returns16RandomBytes()
+    {
+        var salt = _sut.GenerateSalt();
+        Convert.FromBase64String(salt).Should().HaveCount(16);
+        salt.Should().NotBe(_sut.GenerateSalt());
     }
 
     [Fact]
     public void VerifyCode_CorrectCode_ReturnsTrue()
     {
-        var hash = _sut.HashCode("987654");
-        _sut.VerifyCode("987654", hash).Should().BeTrue();
+        var salt = _sut.GenerateSalt();
+        var hash = _sut.HashCode("987654", salt);
+        _sut.VerifyCode("987654", hash, salt).Should().BeTrue();
     }
 
     [Fact]
     public void VerifyCode_WrongCode_ReturnsFalse()
     {
-        var hash = _sut.HashCode("987654");
-        _sut.VerifyCode("000000", hash).Should().BeFalse();
+        var salt = _sut.GenerateSalt();
+        var hash = _sut.HashCode("987654", salt);
+        _sut.VerifyCode("000000", hash, salt).Should().BeFalse();
+    }
+
+    [Fact]
+    public void VerifyCode_WrongSalt_ReturnsFalse()
+    {
+        var hash = _sut.HashCode("987654", _sut.GenerateSalt());
+        _sut.VerifyCode("987654", hash, _sut.GenerateSalt()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void VerifyCode_MalformedHash_ReturnsFalse()
+    {
+        _sut.VerifyCode("987654", "pas du base64 !", _sut.GenerateSalt()).Should().BeFalse();
     }
 }

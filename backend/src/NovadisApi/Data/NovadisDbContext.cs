@@ -65,9 +65,10 @@ namespace NovadisApi.Data
             modelBuilder.Entity<UserToken>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.RefreshToken).IsUnique();
+                entity.HasIndex(e => e.RefreshTokenHash).IsUnique();
+                entity.HasIndex(e => e.TrustedDeviceTokenHash);
                 entity.HasIndex(e => e.UserId);
-                entity.Property(e => e.RefreshToken).IsRequired();
+                entity.Property(e => e.RefreshTokenHash).IsRequired();
                 
                 entity.HasOne(e => e.User)
                     .WithMany()

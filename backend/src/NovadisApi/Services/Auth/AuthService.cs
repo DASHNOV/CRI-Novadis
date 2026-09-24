@@ -55,13 +55,15 @@ public sealed class AuthService : IAuthService
             return AuthResult<LoginResponse>.Failure(AuthErrorCode.AccountLocked, lockout);
 
         var code = _codeGenerator.GenerateCode(6);
-        var codeHash = _codeGenerator.HashCode(code);
+        var codeSalt = _codeGenerator.GenerateSalt();
+        var codeHash = _codeGenerator.HashCode(code, codeSalt);
         var codeExpiry = _configuration.GetValue<int>("Auth:CodeExpiryMinutes", 10);
 
         var authAttempt = new AuthAttempt
         {
             Email = user.Email,
             CodeHash = codeHash,
+            CodeSalt = codeSalt,
             ExpiresAt = DateTime.UtcNow.AddMinutes(codeExpiry),
             IpAddress = request.IpAddress,
 #if DEBUG
@@ -134,7 +136,7 @@ public sealed class AuthService : IAuthService
                 "Code expiré ou invalide. Veuillez demander un nouveau code.");
         }
 
-        if (!_codeGenerator.VerifyCode(request.Code, authAttempt.CodeHash))
+        if (!_codeGenerator.VerifyCode(request.Code, authAttempt.CodeHash, authAttempt.CodeSalt))
         {
             authAttempt.FailedAttempts++;
             await _context.SaveChangesAsync(ct);
@@ -199,9 +201,10 @@ public sealed class AuthService : IAuthService
     {
         _logger.LogInformation("Token refresh attempt");
 
+        var refreshTokenHash = TokenHasher.Hash(request.RefreshToken);
         var userToken = await _context.UserTokens
             .Include(t => t.User)
-            .FirstOrDefaultAsync(t => t.RefreshToken == request.RefreshToken
+            .FirstOrDefaultAsync(t => t.RefreshTokenHash == refreshTokenHash
                 && !t.IsRevoked
                 && t.ExpiresAt > DateTime.UtcNow, ct);
 
@@ -231,8 +234,9 @@ public sealed class AuthService : IAuthService
     {
         _logger.LogInformation("Logout attempt for user {UserId}", userId);
 
+        var refreshTokenHash = TokenHasher.Hash(request.RefreshToken);
         var userToken = await _context.UserTokens
-            .FirstOrDefaultAsync(t => t.RefreshToken == request.RefreshToken && !t.IsRevoked, ct);
+            .FirstOrDefaultAsync(t => t.RefreshTokenHash == refreshTokenHash && !t.IsRevoked, ct);
 
         if (userToken != null)
         {
@@ -268,10 +272,11 @@ public sealed class AuthService : IAuthService
     {
         _logger.LogInformation("Trusted device login attempt for {Email}", request.Email);
 
+        var trustedDeviceTokenHash = TokenHasher.Hash(request.TrustedDeviceToken);
         var userToken = await _context.UserTokens
             .Include(t => t.User)
             .FirstOrDefaultAsync(t =>
-                t.TrustedDeviceToken == request.TrustedDeviceToken
+                t.TrustedDeviceTokenHash == trustedDeviceTokenHash
                 && t.User!.Email.ToLower() == request.Email.ToLower()
                 && !t.IsRevoked
                 && t.ExpiresAt > DateTime.UtcNow, ct);
@@ -331,11 +336,11 @@ public sealed class AuthService : IAuthService
         var newUserToken = new UserToken
         {
             UserId = user.Id,
-            RefreshToken = refreshToken,
+            RefreshTokenHash = TokenHasher.Hash(refreshToken),
             ExpiresAt = DateTime.UtcNow.AddDays(refreshExpiry),
             DeviceInfo = deviceInfo,
             IpAddress = ipAddress,
-            TrustedDeviceToken = trustedDeviceToken
+            TrustedDeviceTokenHash = trustedDeviceToken == null ? null : TokenHasher.Hash(trustedDeviceToken)
         };
 
         _context.UserTokens.Add(newUserToken);

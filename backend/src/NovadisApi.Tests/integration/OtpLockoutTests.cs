@@ -39,10 +39,12 @@ public class OtpLockoutTests : IClassFixture<NovadisWebApplicationFactory>
         var db = scope.ServiceProvider.GetRequiredService<NovadisDbContext>();
         var codes = scope.ServiceProvider.GetRequiredService<ICodeGeneratorService>();
         var created = createdAt ?? DateTime.UtcNow;
+        var salt = codes.GenerateSalt();
         db.AuthAttempts.Add(new AuthAttempt
         {
             Email = email,
-            CodeHash = codes.HashCode(code),
+            CodeHash = codes.HashCode(code, salt),
+            CodeSalt = salt,
             CreatedAt = created,
             // Une tentative ancienne est aussi expirée, comme en production.
             ExpiresAt = createdAt == null ? DateTime.UtcNow.AddMinutes(10) : created.AddMinutes(10),
