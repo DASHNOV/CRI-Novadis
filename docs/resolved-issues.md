@@ -18,6 +18,16 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-09-24] Policy `TechnicianOrAdmin` jamais appliquée + rôle inconnu traité en technicien
+- **Symptôme** : risque latent, découvert en préparant le rôle Superviseur. Tout compte authentifié, quel que soit son rôle, pouvait créer / modifier des CRI : `CRIController`, `ExportController`, `ExportedDocumentsController`, `SitesController`… n'avaient que `[Authorize]`. `docs/architecture.md` affirmait pourtant « TechnicianOrAdmin ».
+- **Cause** : policy déclarée dans `Program.cs` mais référencée nulle part ; droits exprimés par ~15 `IsInRole("Admin")` épars + un filtre maison `RoleAuthorizeAttribute`. En parallèle, `UserRoleExtensions.FromString` (back) et `UserRole.fromString` (front) repliaient toute valeur inconnue sur Technician → un rôle mal saisi (ou un nouveau rôle avant mise à jour du code) donnait le droit de créer des CRI.
+- **Correctif** :
+  - `Authorization/Capabilities.cs` : 9 capacités + `RolesByCapability`, une policy générée par capacité ; `[Authorize(Policy = CriCreate)]` sur toutes les écritures CRI ; `User.HasCapability()` pour les contrôles de propriété. `RoleAuthorizeAttribute` supprimé.
+  - `FromString` → `null` pour l'inconnu ; `User.CanSignIn()` refuse la connexion ; front : écran « Rôle non pris en charge ».
+  - Miroir front `core/constants/permissions.dart`, `hasPermission()` partout.
+  - Tests : `AuthorizationMatrixTests`, `SupervisorAuthorizationTests`, `test/core/permissions_test.dart`.
+- **Prévention** : une policy déclarée doit être **utilisée et testée** (test 403 par capacité). Jamais de repli silencieux vers un rôle doté de droits d'écriture. Ajouter une capacité = back + front + test (cf. `conventions.md`).
+
 ## [2026-09-24] Rôle « Technicien » / « Technician » incohérent + carte CRI dupliquée
 - **Symptôme** : risque latent, pas de panne constatée. Un compte stocké avec `Role = 'Technicien'` avait accès à `/api/personal` mais recevait 403 partout ailleurs (policies `TechnicianOrAdmin` = `"Technician"` seulement). Côté Flutter, `rolePermissions` était indexé sur `'Technicien'` alors que l'API renvoie `'Technician'` → un technicien n'avait **aucune** permission (sans effet visible : `ProtectedRoute` n'est utilisé nulle part).
 - **Cause** : `backend/database/migration_roles.sql` convertissait `Technician` → `Technicien` (sens inverse du code). Tolérances éparpillées (`PersonalStatsController`, `User.IsTechnician`, `GlobalStatsService`) au lieu d'une normalisation unique ; `JwtService` émettait `user.Role` brut.

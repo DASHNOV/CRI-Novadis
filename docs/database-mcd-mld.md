@@ -195,6 +195,7 @@ Notation relationnelle. `__PK__` clé primaire, `[U]` index unique, `*FK*` → t
 ```text
 Users(__Id__: uuid, Email[U], PasswordHash, Role, FirstName,
       LastName, PhoneNumber, IsActive, CreatedAt, LastLoginAt)
+      -- Role ∈ {'Technician', 'Admin', 'Supervisor'} (valeur inconnue = connexion refusée)
 
 Sites(__Numero__: int, NomDuSite, Adresse, Ville, CodePostal,
       Pays, ResponsableDorigine, DateDeCreation)

@@ -116,7 +116,7 @@ Règles invariantes (inchangées) :
 - [x] Commit : `Feat(front): espace Superviseur`.
 
 ### Phase 5 — Docs, compte de test, recette
-- [ ] Docs :
+- [x] Docs :
   - `architecture.md` : tableau contrôleurs → policies réelles ; tableau « Rôles » → 3 rôles + renvoi à la matrice ; routes Flutter → garde par permission.
   - `api-summary.md` : colonne Auth par capacité ; section Rôles.
   - `conventions.md` : « jamais `IsInRole` / `role == '...'` ; toujours une capacité ».
