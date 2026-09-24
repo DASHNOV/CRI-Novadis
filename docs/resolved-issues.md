@@ -18,6 +18,12 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-09-24] Déploiement .NET 10 annulé par le retour arrière — modèle EF différent en Release
+- **Symptôme** : premier déploiement de l'API EF Core 10 (étape 4.3). Le conteneur ne démarre pas (502 Cloudflare pendant 150 s) ; `deploy-remote.sh` revient automatiquement sur l'image précédente — production rétablie sans intervention. Localement, la même version démarrait et passait `verify-phase1.py` (43/43).
+- **Cause** : `AuthAttempt.PlainCode` (OTP en clair, pour un endpoint de dev) était déclarée sous `#if DEBUG`. Le snapshot des migrations, généré en Debug, la contient ; le build **Release** de production ne l'a pas. EF Core 8 ignorait l'écart ; **EF Core 9+ lève `PendingModelChangesWarning` en erreur dans `Migrate()`** → exception au démarrage. Toutes les vérifications locales tournaient en Debug (`dotnet test`, `dotnet ef migrations has-pending-model-changes`, API lancée depuis `bin/Debug`) : l'écart était invisible. Reproduit avec l'image Docker (Release) en `ASPNETCORE_ENVIRONMENT=Production` sur une base migrée par la version précédente.
+- **Correctif** : propriété, affectation et endpoint `GET /auth/dev/get-code` supprimés (le code OTP reste journalisé en Debug) ; migration `RemoveAuthAttemptPlainCode` générée par la CLI (`DropColumn`, colonne toujours vide en production). Test `MigrationSnapshotTests` : `HasPendingModelChanges()` sur le modèle compilé — **échoue en Release sans le correctif, passe en Debug** : la CI (Release) l'aurait bloqué.
+- **Prévention** : jamais de compilation conditionnelle sur le modèle EF. **Valider une montée de version du backend avec l'image Docker (Release) en environnement Production**, pas avec le build Debug local. Le retour arrière automatique (étape 3.2) a transformé ce qui aurait été une panne en incident sans effet : ne jamais le contourner.
+
 ## [2026-09-24] Photos de CRI perdues à la synchronisation — CRI marqué « synced » sans ses photos
 - **Symptôme** : risque de perte de données identifié par l'audit (étape 4.2 du plan). Un CRI dont l'envoi des photos échouait passait « synced » : les photos restaient sur l'appareil et n'étaient **jamais** renvoyées, sans aucun signal.
 - **Cause** : quatre défauts cumulés.

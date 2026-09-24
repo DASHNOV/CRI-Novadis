@@ -230,7 +230,7 @@ AuditLogs(__Id__: uuid,
       UserAgent, CreatedAt)
 
 AuthAttempts(__Id__: uuid, Email, CodeHash, CodeSalt, CreatedAt, ExpiresAt,
-      IpAddress, IsUsed, FailedAttempts [, PlainCode (DEBUG only)])
+      IpAddress, IsUsed, FailedAttempts)
 
 UserTokens(__Id__: uuid,
       *UserId* → Users.Id [NOT NULL, ON DELETE CASCADE],

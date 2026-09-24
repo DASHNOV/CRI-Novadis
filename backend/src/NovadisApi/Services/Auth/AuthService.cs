@@ -65,10 +65,7 @@ public sealed class AuthService : IAuthService
             CodeHash = codeHash,
             CodeSalt = codeSalt,
             ExpiresAt = DateTime.UtcNow.AddMinutes(codeExpiry),
-            IpAddress = request.IpAddress,
-#if DEBUG
-            PlainCode = code
-#endif
+            IpAddress = request.IpAddress
         };
 
         _context.AuthAttempts.Add(authAttempt);
