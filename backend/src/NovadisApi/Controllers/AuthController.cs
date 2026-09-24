@@ -128,49 +128,6 @@ namespace NovadisApi.Controllers
             return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(result.Value!, "Connexion réussie"));
         }
 
-        /// <summary>
-        /// 🔧 GET /api/auth/dev/get-code/{email} - [DEV ONLY] Récupérer le dernier code généré
-        /// ⚠️ À SUPPRIMER EN PRODUCTION
-        /// </summary>
-        [HttpGet("dev/get-code/{email}")]
-        [AllowAnonymous]
-#if !DEBUG
-        [ApiExplorerSettings(IgnoreApi = true)]
-#endif
-        public async Task<ActionResult<ApiResponse<object>>> GetLastCode(string email, CancellationToken ct)
-        {
-#if !DEBUG
-            return NotFound();
-#else
-            _logger.LogWarning("⚠️ DEV ENDPOINT CALLED: get-code for {Email}", email);
-
-            var lastAttempt = await _context.AuthAttempts
-                .Where(a => a.Email.ToLower() == email.ToLower()
-                    && !a.IsUsed
-                    && a.ExpiresAt > DateTime.UtcNow)
-                .OrderByDescending(a => a.CreatedAt)
-                .FirstOrDefaultAsync(ct);
-
-            if (lastAttempt == null)
-            {
-                return NotFound(ApiResponse<object>.ErrorResponse(
-                    "Aucun code actif trouvé. Demandez d'abord un code via /api/auth/login"));
-            }
-
-            return Ok(ApiResponse<object>.SuccessResponse(
-                new
-                {
-                    email = lastAttempt.Email,
-                    code = lastAttempt.PlainCode,
-                    expiresAt = lastAttempt.ExpiresAt,
-                    expiresIn = (int)(lastAttempt.ExpiresAt - DateTime.UtcNow).TotalMinutes,
-                    createdAt = lastAttempt.CreatedAt,
-                    warning = "⚠️ Cet endpoint est disponible uniquement en développement"
-                },
-                "Code récupéré (DEV MODE)"));
-#endif
-        }
-
         // ───────── helpers ─────────
 
         private bool TryGetUserId(out Guid userId)
