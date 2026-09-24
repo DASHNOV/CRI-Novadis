@@ -76,8 +76,8 @@ Auth requise sur tous les endpoints. Lecture : ses CRI, ou tous avec `CriReadAll
 | PUT | `/{id}` | Modifier un CRI existant |
 | PATCH | `/{id}/signature` | Mettre à jour la signature client (propriétaire uniquement) |
 | DELETE | `/{id}` | Supprimer un CRI |
-| GET | `/clients/search?q=` | Autocomplete clients (min 2 chars) |
-| GET | `/sites/search?q=&client=` | Autocomplete sites |
+| GET | `/clients/search?q=` | Autocomplete clients (min 2 chars) — ses CRI seulement, tous avec `CriReadAll` |
+| GET | `/sites/search?q=&client=` | Autocomplete sites — même cloisonnement |
 | POST | `/{id}/photos` | Upload photos (multipart/form-data, max 50 MB) |
 | GET | `/{id}/photos/{photoId}` | Télécharger une photo (binaire) |
 | DELETE | `/{id}/photos/{photoId}` | Supprimer une photo |
@@ -158,7 +158,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
-| GET | `/search?q=` | ❌ | Recherche sites NovaDIS (min 2 chars, insensible accents/casse) |
+| GET | `/search?q=` | ✅ | Recherche sites NovaDIS (min 2 chars, insensible accents/casse) |
 | GET | `/` | ✅ | Liste paginée des sites (`?page=1&pageSize=50`) |
 | POST | `/import` | `SystemAdmin` | Importe les sites depuis le CSV interne |
 | GET | `/summary?siteName=` | ✅ | Résumé d'un site (historique, alertes, recommandations) |

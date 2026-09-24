@@ -269,14 +269,31 @@ namespace NovadisApi.Controllers
             return Ok(ApiResponse<object>.SuccessResponse(null, "CRI supprimé avec succès"));
         }
 
+        /// <summary>
+        /// CRI visibles par l'appelant : les siens, ou tous avec <see cref="Capabilities.CriReadAll"/>.
+        /// Même règle que <see cref="GetMyCRIs"/> — l'autocomplétion ne doit pas révéler
+        /// les clients des autres techniciens.
+        /// </summary>
+        private IQueryable<CRIForm> VisibleCRIs(Guid userId)
+        {
+            var query = _context.CRIForms.AsNoTracking();
+            return User.HasCapability(Capabilities.CriReadAll)
+                ? query
+                : query.Where(c => c.TechnicianId == userId);
+        }
+
         [HttpGet("clients/search")]
         public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> SearchClients([FromQuery] string q)
         {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<IEnumerable<string>>.ErrorResponse("Utilisateur non identifié"));
+
             if (string.IsNullOrWhiteSpace(q))
                 return Ok(ApiResponse<IEnumerable<string>>.SuccessResponse(new List<string>()));
             
             var query = q.ToLower();
-            var clients = await _context.CRIForms
+            var clients = await VisibleCRIs(userId.Value)
                 .Where(c => c.ClientName != null && c.ClientName.ToLower().Contains(query))
                 .Select(c => c.ClientName)
                 .Distinct()
@@ -290,7 +307,11 @@ namespace NovadisApi.Controllers
         [HttpGet("sites/search")]
         public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> SearchSites([FromQuery] string? client, [FromQuery] string q)
         {
-            var queryDb = _context.CRIForms.AsQueryable();
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized(ApiResponse<IEnumerable<string>>.ErrorResponse("Utilisateur non identifié"));
+
+            var queryDb = VisibleCRIs(userId.Value);
 
             if (!string.IsNullOrWhiteSpace(client))
             {
