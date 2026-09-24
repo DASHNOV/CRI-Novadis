@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:novadis_cri/core/constants/permissions.dart';
 import 'package:novadis_cri/core/storage/storage_service.dart';
+import 'package:novadis_cri/models/user_role.dart';
 
 // Provides the current user role
 final userRoleProvider = StateNotifierProvider<UserRoleNotifier, String?>((
@@ -52,18 +53,13 @@ final permissionsProvider = Provider<PermissionsService>((ref) {
 });
 
 class PermissionsService {
-  final String? _role;
+  final UserRole? _role;
 
-  PermissionsService(this._role);
+  PermissionsService(String? role) : _role = UserRole.fromString(role);
 
-  bool hasPermission(String permission) {
-    if (_role == null) return false;
-    // L'API renvoie la forme canonique ('Technician'), mais un rôle stocké
-    // avant la normalisation peut encore valoir 'Technicien'.
-    final key = _role.toLowerCase() == 'technicien' ? UserRole.technicien : _role;
-    final permissions = rolePermissions[key];
-    return permissions != null && permissions.contains(permission);
-  }
+  /// Rôle reconnu de l'utilisateur connecté, `null` si absent ou inconnu.
+  UserRole? get role => _role;
 
-  String? get role => _role;
+  bool hasPermission(String permission) =>
+      rolePermissions[_role]?.contains(permission) ?? false;
 }

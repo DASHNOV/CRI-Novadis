@@ -62,7 +62,7 @@ NovadisApi/
 │   ├── NovadisDbContext.cs
 │   └── Migrations/
 ├── Middleware/                    # GlobalExceptionHandler
-└── Attributes/                    # RoleAuthorizeAttribute
+└── Authorization/                 # Capabilities (capacités + matrice rôle → capacités)
 ```
 
 ### Pipeline middleware (ordre d'exécution)
@@ -101,18 +101,21 @@ Désactivé en environnement `Test`.
 
 ### Contrôleurs
 
-| Contrôleur | Préfixe route | Rôle requis |
+| Contrôleur | Préfixe route | Autorisation (capacité) |
 |-----------|---------------|-------------|
 | `AuthController` | `api/auth` | Public (login/verify) |
-| `CRIController` | `api/cri` | TechnicianOrAdmin |
-| `GlobalStatsController` | `api/global` | Admin |
-| `PersonalStatsController` | `api/personal` | TechnicianOrAdmin |
-| `ExportController` | `api/export` | TechnicianOrAdmin |
-| `ExportedDocumentsController` | `api/exported-documents` | TechnicianOrAdmin |
-| `SitesController` | `api/sites` | TechnicianOrAdmin |
-| `SiteSummaryController` | `api/sites` | TechnicianOrAdmin |
+| `CRIController` | `api/cri` | Authentifié ; écritures → `CriCreate` ; lecture d'autrui → `CriReadAll` ; brouillon / suppression d'autrui → `CriManageAny` |
+| `GlobalStatsController` | `api/global` | `GlobalStats` |
+| `PersonalStatsController` | `api/personal` | `PersonalStats` |
+| `ExportController` | `api/export` | Authentifié ; portée « global » → `ExportAll` |
+| `ExportedDocumentsController` | `api/exported-documents` | Authentifié ; docs d'autrui : lecture → `DocumentsReadAll`, gestion → `DocumentsManageAny` |
+| `SitesController` | `api/sites` | Authentifié ; `POST /import` → `SystemAdmin` |
+| `SiteSummaryController` | `api/sites` | Authentifié |
 | `UsersController` | `api/users` | Authentifié (`technicians`, `me`, `me/signature`) |
-| `HealthController` | `api/health` | Admin (sauf `/live`, public) |
+| `HealthController` | `api/health` | `SystemAdmin` (sauf `/live`, public) |
+
+- Une policy ASP.NET par capacité, générée depuis `Authorization/Capabilities.cs` (`RolesByCapability`) — seule source de vérité.
+- Contrôle inline (propriété) : `User.HasCapability(Capabilities.X)`.
 
 ### Services enregistrés (DI)
 
@@ -275,26 +278,34 @@ lib/
 |------|--------|-------|
 | `/login` | LoginScreen | Public |
 | `/verify-otp` | OtpVerificationScreen | Public |
-| `/home` | RoleHomeScreen | Authentifié |
-| `/dashboard` | MainDashboardPage | Admin |
-| `/dashboard/site/:siteId` | SiteDashboardPage | Admin |
-| `/dashboard/technician/:techId` | TechnicianDashboardPage | Admin |
-| `/cri-form` | CriFormScreen (choix type) | TechnicianOrAdmin |
-| `/cri/new/projet` | CriProjetFormPage | TechnicianOrAdmin |
-| `/cri/new/service` | CriServiceFormPage | TechnicianOrAdmin |
-| `/cri/edit/:id?type=` | CriProjetFormPage / CriServiceFormPage | Propriétaire ou Admin |
-| `/cri/view/:id?type=` | Lecture seule (redirige vers edit) | Propriétaire ou Admin |
-| `/history` | HistoryScreen | TechnicianOrAdmin |
-| `/documents` | DocumentsPage | TechnicianOrAdmin |
-| `/documents/selection` | CriSelectionPage | TechnicianOrAdmin |
-| `/admin` | AdminScreen | Admin |
+| `/home` | RoleHomeScreen (Technician → TechnicianMainScreen ; Admin / Supervisor → AdminMainScreen ; inconnu → « Rôle non pris en charge ») | Authentifié |
+| `/dashboard` | MainDashboardPage (mode global si `GlobalStats`) | Authentifié |
+| `/dashboard/site/:siteId` | SiteDashboardPage | `GlobalStats` |
+| `/dashboard/technician/:techId` | TechnicianDashboardPage | `GlobalStats` |
+| `/cri-form` | CriFormScreen (choix type) | `CriCreate` |
+| `/cri/new/projet` | CriProjetFormPage | `CriCreate` |
+| `/cri/new/service` | CriServiceFormPage | `CriCreate` |
+| `/cri/edit/:id?type=` | CriProjetFormPage / CriServiceFormPage | `CriCreate` (+ propriété vérifiée par l'API) |
+| `/cri/view/:id?type=` | Lecture seule (redirige vers edit) | `CriCreate` |
+| `/history` | HistoryScreen | Authentifié |
+| `/documents` | DocumentsPage | Authentifié |
+| `/documents/selection` | CriSelectionPage | Authentifié |
+| `/admin` | AdminScreen (paramètres, déconnexion) | Authentifié |
+
+- Garde : `AppRouter.requiredPermission()` + `redirect` → `/home` si la permission manque. Filet d'UX : l'API reste seule garante.
+- `AdminMainScreen` = espace de gestion commun Admin / Supervisor ; chaque onglet porte sa permission.
 
 ### Rôles
 
 | Rôle | Accès |
 |------|-------|
-| `Admin` | Tous les CRI, stats globales, tous les dashboards, import sites, santé API. Pas de gestion utilisateurs via l'API (comptes gérés en base) |
-| `Technician` | Ses propres CRI uniquement, stats personnelles, dashboard perso |
+| `Technician` | Ses propres CRI (création, modification, suppression de brouillons), stats personnelles, ses exports |
+| `Admin` | Tout : CRI de tous (modif. des brouillons, suppression), stats globales, dashboards, exports globaux, docs de tous, import sites, santé API |
+| `Supervisor` | Lecture seule : CRI de tous, stats globales, dashboards, exports globaux, docs de tous (gère seulement les siens). Aucune écriture sur les CRI |
+
+- Matrice détaillée : `docs/plan-role-superviseur.md` §4 ; code : `Authorization/Capabilities.cs` (back) et `core/constants/permissions.dart` (front), à garder identiques.
+- Rôle inconnu en base : connexion refusée (`User.CanSignIn`), jamais traité comme technicien.
+- Pas de gestion utilisateurs via l'API : comptes et rôles gérés en base (SQL).
 
 ---
 

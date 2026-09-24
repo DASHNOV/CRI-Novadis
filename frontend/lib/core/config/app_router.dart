@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:novadis_cri/core/constants/permissions.dart';
+import 'package:novadis_cri/core/storage/storage_service.dart';
+import 'package:novadis_cri/features/auth/presentation/providers/permissions_provider.dart';
 import 'package:novadis_cri/features/auth/login_screen.dart';
 import 'package:novadis_cri/features/auth/otp_verification_screen.dart';
 import 'package:novadis_cri/screens/role_home_screen.dart';
@@ -36,9 +39,32 @@ class AppRouter {
   /// Global navigator key — used by Dio interceptor to redirect on auth failure
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  /// Permission requise pour ouvrir [location], `null` si la route est libre.
+  /// Filet d'UX seulement : c'est l'API qui refuse réellement l'action.
+  static String? requiredPermission(String location) {
+    if (location == criForm ||
+        location.startsWith('/cri/new/') ||
+        location.startsWith('/cri/edit/') ||
+        location.startsWith('/cri/view/')) {
+      // /cri/view ouvre aujourd'hui le formulaire d'édition.
+      return Permission.criCreate;
+    }
+    if (location.startsWith('/dashboard/site/') ||
+        location.startsWith('/dashboard/technician/')) {
+      return Permission.globalStats;
+    }
+    return null;
+  }
+
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: login,
+    redirect: (context, state) async {
+      final permission = requiredPermission(state.matchedLocation);
+      if (permission == null) return null;
+      final role = await StorageService().getUserRole();
+      return PermissionsService(role).hasPermission(permission) ? null : home;
+    },
     routes: [
       GoRoute(
         path: login,

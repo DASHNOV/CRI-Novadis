@@ -61,8 +61,9 @@ Controllers/ → Services (interface + impl) → NovadisDbContext → PostgreSQL
 - **DI** : `AddScoped<IInterface, Impl>()` dans `Program.cs`
 - **Réponse API** : toujours `ApiResponse<T>.SuccessResponse(data)` / `ErrorResponse(msg)`
 - **Auth** : `[Authorize]` au niveau classe + `[AllowAnonymous]` par action si besoin
-- **Rôles** : `[RoleAuthorize("Admin")]` ou vérification inline `User.IsInRole("Admin")`
-- **Valeurs de rôle** : uniquement `"Technician"` et `"Admin"`. Tout rôle lu en base passe par `UserRoleExtensions.Normalize()` avant de sortir (JWT, DTO) — jamais `user.Role` brut
+- **Autorisation** : par capacité, **jamais** par rôle. Action → `[Authorize(Policy = Capabilities.X)]` ; règle mêlant propriété → `User.HasCapability(Capabilities.X)`. Interdits : `IsInRole("...")`, `[Authorize(Roles = ...)]`.
+- **Nouvelle capacité** : l'ajouter dans `Authorization/Capabilities.cs` (constante + ligne de `RolesByCapability`) **et** dans `frontend/lib/core/constants/permissions.dart`, puis un test dans `AuthorizationMatrixTests` / `SupervisorAuthorizationTests`.
+- **Valeurs de rôle** : `RoleNames.Technician` / `Admin` / `Supervisor`. Tout rôle lu en base passe par `UserRoleExtensions.Normalize()` avant de sortir (JWT, DTO) — jamais `user.Role` brut. Rôle inconnu → `FromString` renvoie `null`, jamais Technician.
 - **User ID** : `User.FindFirst(ClaimTypes.NameIdentifier)?.Value` via helper `GetCurrentUserId()`
 
 ---
@@ -219,6 +220,9 @@ AppTheme.shadowLg  // forte
 - Commentaires inline en **français**
 
 ### Frontend (Dart)
+
+- **Droits** : `ref.watch(permissionsProvider).hasPermission(Permission.x)` — jamais `role == 'Admin'`. Le front masque, l'API décide.
+- **Rôle** : enum `UserRole` (`models/user_role.dart`) ; `UserRole.fromString` renvoie `null` pour un rôle inconnu ; libellé UI via `.label`.
 
 - `///` uniquement sur les classes et méthodes publiques complexes
 - Commentaires inline en **français**

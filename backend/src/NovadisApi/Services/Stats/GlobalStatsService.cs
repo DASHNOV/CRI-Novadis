@@ -156,8 +156,9 @@ public sealed class GlobalStatsService : IGlobalStatsService
 
     public async Task<IReadOnlyList<UserDto>> GetTechniciansAsync(CancellationToken ct = default)
     {
+        // Liste des auteurs de CRI (filtre des dashboards) : pas les superviseurs.
         return await _context.Users
-            .Where(u => u.IsActive)
+            .Where(u => u.IsActive && u.Role != RoleNames.Supervisor)
             .OrderBy(u => u.LastName)
             .ThenBy(u => u.FirstName)
             .Select(u => new UserDto

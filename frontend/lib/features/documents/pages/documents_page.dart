@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:novadis_cri/core/constants/permissions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -33,8 +34,9 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
     ref.watch(themeAnimationProvider);
     final selected = ref.watch(selectedServerDocumentsProvider);
     final hasSelection = selected.isNotEmpty;
-    final role = ref.watch(userRoleProvider);
-    final isAdmin = role == 'Admin';
+    final showAllUsers = ref
+        .watch(permissionsProvider)
+        .hasPermission(Permission.documentsReadAll);
 
     final filter = ref.watch(serverDocumentsFilterProvider);
     final docsAsync = ref.watch(serverDocumentsProvider(filter));
@@ -114,9 +116,9 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        if (isAdmin)
+                                        if (showAllUsers)
                                           Text(
-                                            'Tous les exports — vue administrateur',
+                                            'Tous les exports',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: AppTheme.textTertiary,
@@ -156,9 +158,9 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                                         letterSpacing: -0.3,
                                       ),
                                     ),
-                                    if (isAdmin)
+                                    if (showAllUsers)
                                       Text(
-                                        'Tous les exports — vue administrateur',
+                                        'Tous les exports',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: AppTheme.textTertiary,
@@ -208,11 +210,12 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                         itemCount: sorted.length,
                         itemBuilder: (context, i) => _ServerDocumentCard(
                           doc: sorted[i],
-                          isAdmin: isAdmin,
+                          showAllUsers: showAllUsers,
+                          canManage: _canManage(sorted[i]),
                           isSelected: selected.contains(sorted[i].id),
                           onTap: () => _openDocument(sorted[i]),
                           onOpen: () => _openDocument(sorted[i]),
-                          onLongPress: () => _toggleSelection(sorted[i].id),
+                          onLongPress: () => _toggleSelection(sorted[i]),
                           onDownload: () => _downloadDocument(sorted[i]),
                           onRename: () => _renameDocument(sorted[i]),
                           onDelete: () => _deleteDocument(sorted[i]),
@@ -227,11 +230,12 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                     },
                     child: _DesktopDocumentTable(
                       docs: sorted,
-                      isAdmin: isAdmin,
+                      showAllUsers: showAllUsers,
+                      canManage: _canManage,
                       selected: selected,
                       onTap: _openDocument,
                       onOpen: _openDocument,
-                      onLongPress: (doc) => _toggleSelection(doc.id),
+                      onLongPress: _toggleSelection,
                       onDownload: _downloadDocument,
                       onRename: _renameDocument,
                       onDelete: _deleteDocument,
@@ -377,7 +381,16 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
     );
   }
 
-  void _toggleSelection(String id) {
+  /// Renommer / supprimer / sélectionner : ses propres documents, ou tous
+  /// avec DocumentsManageAny. Un superviseur voit les exports de tous mais ne
+  /// gère que les siens (l'API refuserait le reste).
+  bool _canManage(ServerExportedDocument doc) =>
+      ref.read(permissionsProvider).hasPermission(Permission.documentsManageAny) ||
+      doc.userId == ref.read(userIdProvider);
+
+  void _toggleSelection(ServerExportedDocument doc) {
+    if (!_canManage(doc)) return;
+    final id = doc.id;
     final current = ref.read(selectedServerDocumentsProvider);
     final next = Set<String>.from(current);
     next.contains(id) ? next.remove(id) : next.add(id);
@@ -566,7 +579,8 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
 // ─── Tableau desktop ───
 class _DesktopDocumentTable extends StatelessWidget {
   final List<ServerExportedDocument> docs;
-  final bool isAdmin;
+  final bool showAllUsers;
+  final bool Function(ServerExportedDocument) canManage;
   final Set<String> selected;
   final void Function(ServerExportedDocument) onTap;
   final void Function(ServerExportedDocument) onOpen;
@@ -577,7 +591,8 @@ class _DesktopDocumentTable extends StatelessWidget {
 
   const _DesktopDocumentTable({
     required this.docs,
-    required this.isAdmin,
+    required this.showAllUsers,
+    required this.canManage,
     required this.selected,
     required this.onTap,
     required this.onOpen,
@@ -617,7 +632,7 @@ class _DesktopDocumentTable extends StatelessWidget {
                   width: 70,
                   child: Text('Taille', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textTertiary)),
                 ),
-                if (isAdmin)
+                if (showAllUsers)
                   Expanded(
                     flex: 3,
                     child: Text('Utilisateur', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textTertiary)),
@@ -684,7 +699,7 @@ class _DesktopDocumentTable extends StatelessWidget {
                       style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
                     ),
                   ),
-                  if (isAdmin)
+                  if (showAllUsers)
                     Expanded(
                       flex: 3,
                       child: Text(
@@ -704,11 +719,13 @@ class _DesktopDocumentTable extends StatelessWidget {
                         case 'delete': onDelete(doc); break;
                       }
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'open', child: Row(children: [Icon(Icons.open_in_new_rounded, size: 18), SizedBox(width: 8), Text('Ouvrir')])),
-                      PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 18), SizedBox(width: 8), Text('Télécharger')])),
-                      PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Renommer')])),
-                      PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 18), SizedBox(width: 8), Text('Supprimer')])),
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(value: 'open', child: Row(children: [Icon(Icons.open_in_new_rounded, size: 18), SizedBox(width: 8), Text('Ouvrir')])),
+                      const PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 18), SizedBox(width: 8), Text('Télécharger')])),
+                      if (canManage(doc)) ...const [
+                        PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Renommer')])),
+                        PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 18), SizedBox(width: 8), Text('Supprimer')])),
+                      ],
                     ],
                   ),
                 ],
@@ -724,7 +741,8 @@ class _DesktopDocumentTable extends StatelessWidget {
 // ─── Card pour un document serveur ───
 class _ServerDocumentCard extends StatelessWidget {
   final ServerExportedDocument doc;
-  final bool isAdmin;
+  final bool showAllUsers;
+  final bool canManage;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onOpen;
@@ -735,7 +753,8 @@ class _ServerDocumentCard extends StatelessWidget {
 
   const _ServerDocumentCard({
     required this.doc,
-    required this.isAdmin,
+    required this.showAllUsers,
+    required this.canManage,
     required this.isSelected,
     required this.onTap,
     required this.onOpen,
@@ -823,7 +842,7 @@ class _ServerDocumentCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (isAdmin && doc.userName != null) ...[
+                      if (showAllUsers && doc.userName != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -897,6 +916,7 @@ class _ServerDocumentCard extends StatelessWidget {
                         Text('Télécharger'),
                       ]),
                     ),
+                    if (canManage) ...[
                     const PopupMenuItem(
                       value: 'rename',
                       child: Row(children: [
@@ -913,6 +933,7 @@ class _ServerDocumentCard extends StatelessWidget {
                         Text('Supprimer'),
                       ]),
                     ),
+                    ],
                   ],
                 ),
               ],

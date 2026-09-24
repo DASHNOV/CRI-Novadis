@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using NovadisApi.Attributes;
 using NovadisApi.Data;
 using NovadisApi.Models;
 using NovadisApi.Models.DTOs;
 using System.Security.Claims;
+using NovadisApi.Authorization;
 
 namespace NovadisApi.Controllers
 {
@@ -16,7 +16,7 @@ namespace NovadisApi.Controllers
     [ApiController]
     [Route("api/personal")]
     [Authorize]
-    [RoleAuthorize("Technician", "Admin")]
+    [Authorize(Policy = Capabilities.PersonalStats)]
     public class PersonalStatsController : ControllerBase
     {
         private readonly NovadisDbContext _context;

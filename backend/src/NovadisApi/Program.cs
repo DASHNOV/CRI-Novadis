@@ -18,6 +18,7 @@ using Serilog.Events;
 using System.Globalization;
 using System.Text;
 using System.Threading.RateLimiting;
+using NovadisApi.Authorization;
 
 // Traite les DateTime sans Kind comme UTC — compatibilité SQL Server → PostgreSQL
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -94,11 +95,11 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Une policy par capacité, générée depuis la table Capabilities (source unique).
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("TechnicianOrAdmin", policy => 
-        policy.RequireRole("Technician", "Admin"));
+    foreach (var (capability, roles) in Capabilities.RolesByCapability)
+        options.AddPolicy(capability, policy => policy.RequireRole(roles));
 });
 
 // ========================================

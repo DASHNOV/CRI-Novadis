@@ -7,6 +7,7 @@ using NovadisApi.Models.DTOs;
 using NovadisApi.Services;
 using System.Security.Claims;
 using System.Text.Json;
+using NovadisApi.Authorization;
 
 namespace NovadisApi.Controllers
 {
@@ -57,7 +58,7 @@ namespace NovadisApi.Controllers
 
             IQueryable<CRIForm> query = _context.CRIForms.AsNoTracking();
 
-            if (!User.IsInRole("Admin"))
+            if (!User.HasCapability(Capabilities.CriReadAll))
             {
                 query = query.Where(c => c.TechnicianId == userId.Value);
             }
@@ -104,14 +105,15 @@ namespace NovadisApi.Controllers
             if (cri == null)
                 return NotFound(ApiResponse<CRIForm>.ErrorResponse("CRI introuvable"));
 
-            // Les admins peuvent tout voir, les techniciens seulement les leurs
-            if (cri.TechnicianId != userId.Value && !User.IsInRole("Admin"))
+            // Lecture : propriétaire, ou capacité de lire tous les CRI.
+            if (cri.TechnicianId != userId.Value && !User.HasCapability(Capabilities.CriReadAll))
                 return Forbid();
 
             return Ok(ApiResponse<CRIForm>.SuccessResponse(cri));
         }
 
         [HttpPost]
+        [Authorize(Policy = Capabilities.CriCreate)]
         public async Task<ActionResult<ApiResponse<CRIForm>>> CreateCRI([FromBody] CriInputDto input)
         {
             var userId = GetCurrentUserId();
@@ -127,7 +129,7 @@ namespace NovadisApi.Controllers
             if (existing != null)
             {
                 // CRI already exists on server (e.g. draft saved before) — update it
-                if (existing.TechnicianId != userId.Value && !User.IsInRole("Admin"))
+                if (existing.TechnicianId != userId.Value && !User.HasCapability(Capabilities.CriManageAny))
                     return Forbid();
 
                 ApplyTo(input, existing);
@@ -166,6 +168,7 @@ namespace NovadisApi.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = Capabilities.CriCreate)]
         public async Task<ActionResult<ApiResponse<CRIForm>>> UpdateCRI(Guid id, [FromBody] CriInputDto input)
         {
             var userId = GetCurrentUserId();
@@ -192,8 +195,8 @@ namespace NovadisApi.Controllers
             }
             else
             {
-                // Brouillon / CRI non soumis : propriétaire ou administrateur.
-                if (!isOwner && !User.IsInRole("Admin"))
+                // Brouillon / CRI non soumis : propriétaire ou gestion de tous les CRI.
+                if (!isOwner && !User.HasCapability(Capabilities.CriManageAny))
                     return Forbid();
             }
 
@@ -220,6 +223,7 @@ namespace NovadisApi.Controllers
         /// peuvent le faire que sur leurs propres CRI.
         /// </summary>
         [HttpPatch("{id}/signature")]
+        [Authorize(Policy = Capabilities.CriCreate)]
         public async Task<ActionResult<ApiResponse<object>>> UpdateClientSignature(Guid id, [FromBody] UpdateSignatureDto body)
         {
             var userId = GetCurrentUserId();
@@ -244,6 +248,7 @@ namespace NovadisApi.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = Capabilities.CriCreate)]
         public async Task<ActionResult<ApiResponse<object>>> DeleteCRI(Guid id)
         {
             var userId = GetCurrentUserId();
@@ -255,7 +260,7 @@ namespace NovadisApi.Controllers
             if (cri == null)
                 return NotFound(ApiResponse<object>.ErrorResponse("CRI introuvable"));
 
-            if (cri.TechnicianId != userId.Value && !User.IsInRole("Admin"))
+            if (cri.TechnicianId != userId.Value && !User.HasCapability(Capabilities.CriManageAny))
                 return Forbid();
 
             _context.CRIForms.Remove(cri);
@@ -314,6 +319,7 @@ namespace NovadisApi.Controllers
         /// POST /api/cri/{id}/photos — Upload de photos (multipart/form-data, champ "files").
         /// </summary>
         [HttpPost("{id}/photos")]
+        [Authorize(Policy = Capabilities.CriCreate)]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(52_428_800)] // 50 MB max
         public async Task<ActionResult<ApiResponse<List<CRIPhoto>>>> UploadPhotos(Guid id)
@@ -326,7 +332,7 @@ namespace NovadisApi.Controllers
             if (cri == null)
                 return NotFound(ApiResponse<List<CRIPhoto>>.ErrorResponse("CRI introuvable"));
 
-            if (cri.TechnicianId != userId.Value && !User.IsInRole("Admin"))
+            if (cri.TechnicianId != userId.Value && !User.HasCapability(Capabilities.CriManageAny))
                 return Forbid();
 
             var files = Request.Form.Files;
@@ -390,7 +396,7 @@ namespace NovadisApi.Controllers
 
             if (photo == null) return NotFound();
 
-            if (photo.CRIForm!.TechnicianId != userId.Value && !User.IsInRole("Admin"))
+            if (photo.CRIForm!.TechnicianId != userId.Value && !User.HasCapability(Capabilities.CriReadAll))
                 return Forbid();
 
             if (!System.IO.File.Exists(photo.StoragePath))
@@ -403,6 +409,7 @@ namespace NovadisApi.Controllers
         /// DELETE /api/cri/{id}/photos/{photoId} — Supprime une photo (fichier + BDD).
         /// </summary>
         [HttpDelete("{id}/photos/{photoId}")]
+        [Authorize(Policy = Capabilities.CriCreate)]
         public async Task<ActionResult<ApiResponse<object>>> DeletePhoto(Guid id, Guid photoId)
         {
             var userId = GetCurrentUserId();
@@ -416,7 +423,7 @@ namespace NovadisApi.Controllers
             if (photo == null)
                 return NotFound(ApiResponse<object>.ErrorResponse("Photo introuvable"));
 
-            if (photo.CRIForm!.TechnicianId != userId.Value && !User.IsInRole("Admin"))
+            if (photo.CRIForm!.TechnicianId != userId.Value && !User.HasCapability(Capabilities.CriManageAny))
                 return Forbid();
 
             if (System.IO.File.Exists(photo.StoragePath))

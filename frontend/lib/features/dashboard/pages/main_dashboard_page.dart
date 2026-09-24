@@ -40,8 +40,8 @@ class _MainDashboardPageState extends ConsumerState<MainDashboardPage> {
     final viewMode = ref.watch(dashboardViewModeProvider);
     final dashboardDataAsync = ref.watch(dashboardDataProvider);
     final userName = ref.watch(userNameProvider);
-    final userRole = ref.watch(userRoleProvider);
-    final isAdmin = userRole == UserRole.admin;
+    final showGlobalStats =
+        ref.watch(permissionsProvider).hasPermission(Permission.globalStats);
     final isMobile = MediaQuery.of(context).size.width < 640;
 
     return Scaffold(
@@ -149,8 +149,8 @@ class _MainDashboardPageState extends ConsumerState<MainDashboardPage> {
                       builder: (context, constraints) {
                         final isDesktop = constraints.maxWidth >= 1000;
 
-                        // Mode admin : utilise les données API
-                        if (isAdmin) {
+                        // Stats globales : utilise les données API
+                        if (showGlobalStats) {
                           if (viewMode == DashboardViewMode.general) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

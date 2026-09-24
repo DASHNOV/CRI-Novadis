@@ -19,7 +19,7 @@ namespace NovadisApi.Models
 
         [Required]
         [MaxLength(50)]
-        public string Role { get; set; } = "Technician"; // Admin, Technician
+        public string Role { get; set; } = RoleNames.Technician; // cf. RoleNames
 
         [MaxLength(100)]
         public string? FirstName { get; set; }
@@ -38,10 +38,11 @@ namespace NovadisApi.Models
 
         public string? SavedSignature { get; set; }
 
-        // Helper methods - supporte les deux formes du rôle
-        public bool IsAdmin() => Role == "Admin";
-        public bool IsTechnician() => Role == "Technician" || Role == "Technicien";
-        public UserRole GetUserRole() => UserRoleExtensions.FromString(Role);
+        /// <summary>
+        /// Un compte ne peut se connecter que s'il est actif et que son rôle est
+        /// reconnu — un rôle inconnu n'est jamais traité comme technicien.
+        /// </summary>
+        public bool CanSignIn() => IsActive && UserRoleExtensions.FromString(Role) != null;
 
         // Relations
         public virtual ICollection<CRIForm> CRIForms { get; set; } = new List<CRIForm>();

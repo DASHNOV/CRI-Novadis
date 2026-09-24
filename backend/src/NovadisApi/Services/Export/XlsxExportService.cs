@@ -14,8 +14,8 @@ namespace NovadisApi.Services.Export
 
     public interface IXlsxExportService
     {
-        Task<(byte[] Bytes, string Filename)?> GenerateSingleCriAsync(Guid criId, Guid requesterId, bool isAdmin);
-        Task<(byte[] Bytes, string Filename)> GeneratePeriodAsync(ExportPeriod period, DateTime referenceDate, Guid requesterId, bool isAdmin, ExportDetailLevel detailLevel = ExportDetailLevel.Full);
+        Task<(byte[] Bytes, string Filename)?> GenerateSingleCriAsync(Guid criId, Guid requesterId, bool allTechnicians);
+        Task<(byte[] Bytes, string Filename)> GeneratePeriodAsync(ExportPeriod period, DateTime referenceDate, Guid requesterId, bool allTechnicians, ExportDetailLevel detailLevel = ExportDetailLevel.Full);
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ namespace NovadisApi.Services.Export
         // ──────────────────────────────────────────────────────────
         // Export d'un CRI unique
         // ──────────────────────────────────────────────────────────
-        public async Task<(byte[] Bytes, string Filename)?> GenerateSingleCriAsync(Guid criId, Guid requesterId, bool isAdmin)
+        public async Task<(byte[] Bytes, string Filename)?> GenerateSingleCriAsync(Guid criId, Guid requesterId, bool allTechnicians)
         {
             var cri = await _db.CRIForms
                 .Include(c => c.Technician)
@@ -63,7 +63,7 @@ namespace NovadisApi.Services.Export
                 .FirstOrDefaultAsync(c => c.Id == criId);
 
             if (cri == null) return null;
-            if (!isAdmin && cri.TechnicianId != requesterId) return null;
+            if (!allTechnicians && cri.TechnicianId != requesterId) return null;
 
             using var wb = new XLWorkbook();
             BuildCriDetailSheet(wb, cri);
@@ -235,7 +235,7 @@ namespace NovadisApi.Services.Export
         // Export période (jour / semaine / mois / année)
         // ──────────────────────────────────────────────────────────
         public async Task<(byte[] Bytes, string Filename)> GeneratePeriodAsync(
-            ExportPeriod period, DateTime referenceDate, Guid requesterId, bool isAdmin, ExportDetailLevel detailLevel = ExportDetailLevel.Full)
+            ExportPeriod period, DateTime referenceDate, Guid requesterId, bool allTechnicians, ExportDetailLevel detailLevel = ExportDetailLevel.Full)
         {
             var range = ComputeRange(period, referenceDate);
 
@@ -245,7 +245,7 @@ namespace NovadisApi.Services.Export
                 .AsNoTracking()
                 .Where(c => c.InterventionDate >= range.StartUtc && c.InterventionDate < range.EndUtcExclusive);
 
-            if (!isAdmin)
+            if (!allTechnicians)
             {
                 query = query.Where(c => c.TechnicianId == requesterId);
             }
@@ -256,22 +256,22 @@ namespace NovadisApi.Services.Export
             IQueryable<CRIForm> previousQuery = _db.CRIForms
                 .AsNoTracking()
                 .Where(c => c.InterventionDate >= previousRange.StartUtc && c.InterventionDate < previousRange.EndUtcExclusive);
-            if (!isAdmin)
+            if (!allTechnicians)
             {
                 previousQuery = previousQuery.Where(c => c.TechnicianId == requesterId);
             }
             var previousCris = await previousQuery.ToListAsync();
 
             using var wb = new XLWorkbook();
-            BuildCoverSheet(wb, cris, period, range, isAdmin, detailLevel);
-            BuildSummarySheet(wb, cris, previousCris, period, range, isAdmin);
+            BuildCoverSheet(wb, cris, period, range, allTechnicians, detailLevel);
+            BuildSummarySheet(wb, cris, previousCris, period, range, allTechnicians);
             if (detailLevel == ExportDetailLevel.Full)
             {
                 BuildInterventionsSheet(wb, cris);
                 if (cris.Count > 0)
                 {
                     BuildBySiteSheet(wb, cris);
-                    if (isAdmin)
+                    if (allTechnicians)
                     {
                         BuildByTechnicianSheet(wb, cris);
                     }
@@ -281,7 +281,7 @@ namespace NovadisApi.Services.Export
             using var ms = new MemoryStream();
             wb.SaveAs(ms);
 
-            var scope = isAdmin ? "global" : "personnel";
+            var scope = allTechnicians ? "global" : "personnel";
             var suffix = detailLevel == ExportDetailLevel.Summary ? "-resume" : "";
             var filename = $"novadis-{PeriodSlug(period)}-{scope}{suffix}-{range.StartUtc:yyyyMMdd}.xlsx";
             return (ms.ToArray(), filename);
@@ -297,7 +297,7 @@ namespace NovadisApi.Services.Export
             return ms.ToArray();
         }
 
-        private static void BuildCoverSheet(XLWorkbook wb, List<CRIForm> cris, ExportPeriod period, PeriodRange range, bool isAdmin, ExportDetailLevel detailLevel)
+        private static void BuildCoverSheet(XLWorkbook wb, List<CRIForm> cris, ExportPeriod period, PeriodRange range, bool allTechnicians, ExportDetailLevel detailLevel)
         {
             var ws = wb.Worksheets.Add("Page de garde");
             ws.ShowGridLines = false;
@@ -340,7 +340,7 @@ namespace NovadisApi.Services.Export
                 row++;
             }
 
-            Info("Portée", isAdmin ? "Tous les techniciens" : "Mes CRI");
+            Info("Portée", allTechnicians ? "Tous les techniciens" : "Mes CRI");
             Info("Généré le", DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
             Info("Nombre de CRI inclus", cris.Count.ToString());
             var brouillons = cris.Count(c => c.Status == "Draft");
@@ -365,7 +365,7 @@ namespace NovadisApi.Services.Export
             ApplyPrintSetup(ws, landscape: false, repeatHeaderRow: false);
         }
 
-        private static void BuildSummarySheet(XLWorkbook wb, List<CRIForm> cris, List<CRIForm> previousCris, ExportPeriod period, PeriodRange range, bool isAdmin)
+        private static void BuildSummarySheet(XLWorkbook wb, List<CRIForm> cris, List<CRIForm> previousCris, ExportPeriod period, PeriodRange range, bool allTechnicians)
         {
             var ws = wb.Worksheets.Add("Résumé");
             ws.ShowGridLines = false;
@@ -383,7 +383,7 @@ namespace NovadisApi.Services.Export
             ws.Cell(row, 1).Value = "Période"; StyleLabel(ws.Cell(row, 1));
             ws.Cell(row, 2).Value = PeriodLabel(period);
             ws.Cell(row, 3).Value = "Portée"; StyleLabel(ws.Cell(row, 3));
-            ws.Cell(row, 4).Value = isAdmin ? "Tous les techniciens" : "Mes CRI";
+            ws.Cell(row, 4).Value = allTechnicians ? "Tous les techniciens" : "Mes CRI";
             row++;
 
             ws.Cell(row, 1).Value = "Début"; StyleLabel(ws.Cell(row, 1));
@@ -415,7 +415,7 @@ namespace NovadisApi.Services.Export
             WriteKpi(ws, ref row, "Durée totale (h)", Math.Round(dureeTotale / 60.0, 2));
             WriteKpi(ws, ref row, "Durée moyenne (h)", Math.Round(dureeMoyenne, 2));
             WriteKpi(ws, ref row, "Sites distincts", sites);
-            if (isAdmin)
+            if (allTechnicians)
             {
                 WriteKpi(ws, ref row, "Techniciens actifs", techniciens);
             }

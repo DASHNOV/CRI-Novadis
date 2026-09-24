@@ -7,6 +7,19 @@
 { "success": true, "data": <T>, "message": "...", "errors": [] }
 ```
 **Pagination** : headers `X-Total-Count`, `X-Page`, `X-Page-Size`, `X-Total-Pages`
+**Rôles** : `Technician`, `Admin`, `Supervisor`. Autorisation par capacité (`Authorization/Capabilities.cs`) ; refus → **403** sans corps.
+
+| Capacité | Technician | Admin | Supervisor |
+|---|:-:|:-:|:-:|
+| `CriCreate` | ✅ | ✅ | ❌ |
+| `CriReadAll` | ❌ | ✅ | ✅ |
+| `CriManageAny` | ❌ | ✅ | ❌ |
+| `PersonalStats` | ✅ | ✅ | ❌ |
+| `GlobalStats` | ❌ | ✅ | ✅ |
+| `ExportAll` | ❌ | ✅ | ✅ |
+| `DocumentsReadAll` | ❌ | ✅ | ✅ |
+| `DocumentsManageAny` | ❌ | ✅ | ❌ |
+| `SystemAdmin` | ❌ | ✅ | ❌ |
 
 ---
 
@@ -53,7 +66,7 @@
 
 ## CRI — `/api/cri`
 
-Auth requise sur tous les endpoints. Admin voit tous les CRI, Technician voit uniquement les siens.
+Auth requise sur tous les endpoints. Lecture : ses CRI, ou tous avec `CriReadAll`. Écritures (`POST`, `PUT`, `PATCH signature`, `DELETE`, photos) : `CriCreate` + propriétaire (brouillon / suppression d'autrui : `CriManageAny` ; CRI soumis : propriétaire seul ; signature : propriétaire strict).
 
 | Méthode | Route | Description |
 |---------|-------|-------------|
@@ -92,7 +105,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 
 ---
 
-## Stats globales — `/api/global` *(Admin uniquement)*
+## Stats globales — `/api/global` *(`GlobalStats` : Admin, Supervisor)*
 
 | Méthode | Route | Paramètres | Description |
 |---------|-------|-----------|-------------|
@@ -120,7 +133,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 
 ## Stats personnelles — `/api/personal`
 
-Auth requise. Données du technicien connecté uniquement.
+`PersonalStats` (Technician, Admin). Données de l'utilisateur connecté uniquement.
 
 | Méthode | Route | Paramètres | Description |
 |---------|-------|-----------|-------------|
@@ -147,7 +160,7 @@ Auth requise. Données du technicien connecté uniquement.
 |---------|-------|------|-------------|
 | GET | `/search?q=` | ❌ | Recherche sites NovaDIS (min 2 chars, insensible accents/casse) |
 | GET | `/` | ✅ | Liste paginée des sites (`?page=1&pageSize=50`) |
-| POST | `/import` | ✅ Admin | Importe les sites depuis le CSV interne |
+| POST | `/import` | `SystemAdmin` | Importe les sites depuis le CSV interne |
 | GET | `/summary?siteName=` | ✅ | Résumé d'un site (historique, alertes, recommandations) |
 
 **Réponse `/search`** (liste de `SiteDto`)
@@ -173,7 +186,7 @@ Auth requise. Données du technicien connecté uniquement.
 
 ## Export — `/api/export`
 
-Auth requise. Admin exporte tout, Technician exporte ses propres CRI.
+Auth requise. Avec `ExportAll` (Admin, Supervisor) : tous les CRI, métadonnée `scope: "global"` ; sinon ses propres CRI (`scope: "personnel"`).
 
 | Méthode | Route | Paramètres | Description |
 |---------|-------|-----------|-------------|
@@ -184,7 +197,7 @@ Auth requise. Admin exporte tout, Technician exporte ses propres CRI.
 
 ## Documents exportés — `/api/exported-documents`
 
-Visibilité : **Admin voit/ouvre tous les documents** (tous techniciens), le DTO renvoie alors `userName`/`userEmail`. Technicien : uniquement les siens (filtre `UserId`). Même règle sur `download`/`rename`/`delete`/`mark-shared` (bypass admin).
+Visibilité : avec `DocumentsReadAll` (Admin, Supervisor), liste et `download` de **tous** les documents (le DTO renvoie `userName`/`userEmail`) ; sinon uniquement les siens (filtre `UserId`). `rename`/`delete`/`mark-shared` : propriétaire, ou `DocumentsManageAny` (Admin seul).
 
 | Méthode | Route | Paramètres | Description |
 |---------|-------|-----------|-------------|
@@ -206,7 +219,8 @@ Visibilité : **Admin voit/ouvre tous les documents** (tous techniciens), le DTO
 | PUT | `/me/signature` | ✅ | Enregistre la signature de l'utilisateur connecté |
 
 > Aucune route de création / désactivation de compte : les utilisateurs se gèrent en base.
-> `role` est toujours renvoyé sous forme canonique (`Technician` / `Admin`).
+> `role` est toujours renvoyé sous forme canonique (`Technician` / `Admin` / `Supervisor`).
+> `/technicians` exclut les superviseurs (liste des « Techniciens intervenants »).
 
 ---
 
@@ -215,8 +229,8 @@ Visibilité : **Admin voit/ouvre tous les documents** (tous techniciens), le DTO
 | Méthode | Route | Auth | Description |
 |---------|-------|------|-------------|
 | GET | `/live` | ❌ | Liveness probe (toujours 200) — sonde Docker et monitoring externe |
-| GET | `/` | Admin | Readiness : DB, latence, disque, mémoire (200 OK / 503 si KO) |
-| GET | `/stats` | Admin | Compteurs DB (users, CRI, photos, logs, CRI par statut) |
+| GET | `/` | `SystemAdmin` | Readiness : DB, latence, disque, mémoire (200 OK / 503 si KO) |
+| GET | `/stats` | `SystemAdmin` | Compteurs DB (users, CRI, photos, logs, CRI par statut) |
 
 > `/users` et `/test-write` ont été supprimés (phase 1.1 du plan de remédiation) : ils
 > servaient l'annuaire complet des utilisateurs sans authentification. `/stats` n'expose
