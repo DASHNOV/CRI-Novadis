@@ -3,6 +3,8 @@
 > Document destiné à **toute personne devant remettre le service en état**, y compris
 > sans connaissance préalable du projet.
 > Dernière vérification réelle de la restauration : **2026-09-07** (39 CRI, 12 utilisateurs, zéro erreur).
+> Objectif de reprise après perte totale du serveur : **4 h** — budget et conditions dans
+> [`deployment.md`](deployment.md#objectifs-de-reprise).
 
 **Lisez la section « Avant de commencer » en entier avant de taper la moindre commande.**
 Une restauration mal engagée détruit les données qui restaient récupérables.
@@ -38,7 +40,7 @@ Chaque sauvegarde quotidienne (3 h du matin) produit deux fichiers horodatés :
 | Identifiants Backblaze B2 | **Gestionnaire de mots de passe partagé** |
 | Contenu du fichier `.env` | **Gestionnaire de mots de passe partagé** |
 | Accès au dépôt GitHub | Compte de l'organisation DASHNOV |
-| Accès Cloudflare | Compte de l'organisation, pour le tunnel |
+| Accès Cloudflare | Compte de l'organisation ; **jeton du tunnel** dans le gestionnaire de mots de passe |
 
 ### 2. ⚠️ Le point qui fait échouer une reprise
 
@@ -192,6 +194,8 @@ sudo chmod 600 /root/.config/rclone/rclone.conf
 cd /opt/cri-novadis
 sudo mkdir -p logs uploads export-storage
 sudo chown -R 1654:1654 logs uploads export-storage
+# Le déploiement (utilisateur SSH du secret VPS_USER) écrit son dump pré-déploiement ici :
+sudo chown <VPS_USER> backups
 ```
 
 ### B4. Récupérer la configuration depuis le dépôt
@@ -234,10 +238,10 @@ Restaurez ensuite les données par le **scénario A, étapes A4 et A5**.
 
 ### B7. Rétablir l'accès public
 
-Le tunnel Cloudflare pointe l'API publique vers `localhost:5200` du serveur. Il n'est pas
-encore versionné dans le dépôt : reconfigurez-le depuis le tableau de bord Cloudflare
-(*Zero Trust → Networks → Tunnels*) en faisant pointer `api.cri-novadis.tech` vers la
-nouvelle machine, en mode **Full (Strict)**.
+Le tunnel Cloudflare pointe l'API publique vers `localhost:5200` du serveur. Il est géré
+depuis le tableau de bord : il suffit de réinstaller `cloudflared` sur la nouvelle machine
+avec le **jeton du tunnel** (gestionnaire de mots de passe). Procédure complète et
+configuration attendue : [`../infra/cloudflared/README.md`](../infra/cloudflared/README.md).
 
 ### B8. Rétablir la sauvegarde automatique
 

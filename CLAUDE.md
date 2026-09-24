@@ -41,6 +41,7 @@ dotnet run                     # écoute http://0.0.0.0:5200
 - API : `docs/api-summary.md`
 - Base de données (MCD/MLD) : `docs/database-mcd-mld.md`
 - Incidents résolus : `docs/resolved-issues.md`
+- Déploiement, surveillance, reprise : `docs/deployment.md`
 - Sécurité : `SECURITY.md`
 
 ## Config

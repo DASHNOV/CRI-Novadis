@@ -10,7 +10,7 @@ Application de gestion des **Comptes Rendus d'Intervention** (CRI) — web et mo
 | Backend | ASP.NET Core (.NET 10) |
 | Base de données | PostgreSQL via Npgsql + EF Core |
 | Auth | Magic link OTP → JWT (access + refresh) |
-| CI/CD | GitHub Actions + Vercel + serveur Windows interne |
+| CI/CD | GitHub Actions → Vercel (web) + VPS Linux sous Docker, exposé par tunnel Cloudflare (API) |
 
 ## Prérequis
 
@@ -105,9 +105,9 @@ Voir [`docs/architecture.md`](docs/architecture.md) pour le schéma détaillé.
 
 | Workflow | Déclencheur | Action |
 |----------|-------------|--------|
-| `ci-tests.yml` | push/PR sur `main`/`dev` | Tests backend (.NET) + frontend (Flutter) |
-| `deploy-api.yml` | push sur `main` (backend ou `docker-compose.yml` modifié) | Build + déploiement de l'API sur le VPS |
-| `deploy-vercel.yml` | push sur `main` (frontend modifié) | Build Flutter web + déploiement Vercel |
+| `ci-tests.yml` | PR vers `main`/`dev`, push sur `dev`, appelé par les déploiements | Tests backend (.NET) + frontend (Flutter) |
+| `deploy-api.yml` | push sur `main` (backend, `docker-compose.yml`, `scripts/deploy-remote.sh`) ou manuel | Tests bloquants → image `:<sha>` → dump, déploiement, retour arrière auto |
+| `deploy-vercel.yml` | push sur `main` (frontend modifié) | Tests bloquants → Flutter web → Vercel |
 
 `main` est la branche de **production**, `dev` la branche de développement.
 Flux nominal : `feature/xxx` → `dev` (tests) → `main` (tests + déploiement).
@@ -120,6 +120,7 @@ Flux nominal : `feature/xxx` → `dev` (tests) → `main` (tests + déploiement)
 | [`docs/api-summary.md`](docs/api-summary.md) | Tous les endpoints avec méthode, auth et description |
 | [`docs/conventions.md`](docs/conventions.md) | Conventions de code, nommage, Git |
 | [`docs/resolved-issues.md`](docs/resolved-issues.md) | Bugs complexes résolus avec cause et prévention |
+| [`docs/deployment.md`](docs/deployment.md) | Hôte de production, déploiement, surveillance, objectifs de reprise |
 | [`docs/disaster-recovery.md`](docs/disaster-recovery.md) | **Procédure de restauration** — à suivre en cas de perte de données ou de serveur |
 | [`scripts/README-backup.md`](scripts/README-backup.md) | Sauvegardes quotidiennes et copie hors site |
 | [`SECURITY.md`](SECURITY.md) | Politique de sécurité |
