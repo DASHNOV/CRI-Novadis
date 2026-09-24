@@ -299,6 +299,10 @@ lib/
 | `/documents/selection` | CriSelectionPage | Authentifié |
 | `/admin` | AdminScreen (paramètres, déconnexion) | Authentifié |
 
+- Garde (`AppRouter.authRedirect`, étape 2.5) : sans jeton, toute route non publique → `/login?from=<destination>` ; après connexion, `AppRouter.afterLogin(from)` y revient (chemins internes uniquement, sinon `/home`)
+- Puis garde de capacité (`requiredPermission`) → `/home` si droit absent. Filets d'UX : l'API reste seule juge
+- Dio : 401 → refresh puis `/login` ; 403 → ni refresh ni déconnexion, message « droits nécessaires » (`ApiException.fromDio`)
+
 - Garde : `AppRouter.requiredPermission()` + `redirect` → `/home` si la permission manque. Filet d'UX : l'API reste seule garante.
 - `AdminMainScreen` = espace de gestion commun Admin / Supervisor ; chaque onglet porte sa permission.
 

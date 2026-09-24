@@ -122,6 +122,8 @@ final dioProvider = Provider<Dio>((ref) {
         return handler.next(options);
       },
       onError: (DioException e, handler) async {
+        // 403 inclus : le jeton est valide, c'est le droit qui manque — ni
+        // rafraîchissement ni déconnexion (message : ApiException.fromDio).
         if (e.response?.statusCode != 401) {
           return handler.next(e);
         }

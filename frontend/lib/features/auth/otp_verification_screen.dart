@@ -18,7 +18,10 @@ import 'package:novadis_cri/core/theme/theme_provider.dart';
 class OtpVerificationScreen extends HookConsumerWidget {
   final String email;
 
-  const OtpVerificationScreen({super.key, required this.email});
+  /// Destination demandée avant la redirection vers la connexion.
+  final String? from;
+
+  const OtpVerificationScreen({super.key, required this.email, this.from});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,7 +80,7 @@ class OtpVerificationScreen extends HookConsumerWidget {
         ref.invalidate(userIdProvider);
 
         if (context.mounted) {
-          context.go(AppRouter.home);
+          context.go(AppRouter.afterLogin(from));
         }
       } catch (e) {
         errorMessage.value = e.toString();
