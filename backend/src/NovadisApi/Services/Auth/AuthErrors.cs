@@ -14,6 +14,7 @@ public enum AuthErrorCode
     AccountInactive,
     DeviceNotRecognized,
     EmailDeliveryFailed,
+    AccountLocked,
     Unexpected
 }
 
