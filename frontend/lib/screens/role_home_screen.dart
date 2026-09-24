@@ -61,9 +61,9 @@ class _RoleHomeScreenState extends ConsumerState<RoleHomeScreen> {
     }
 
     return switch (_role) {
-      UserRole.admin => const AdminMainScreen(),
+      UserRole.admin || UserRole.supervisor => AdminMainScreen(role: _role!),
       UserRole.technician => const TechnicianMainScreen(),
-      UserRole.supervisor || null => const _UnsupportedRoleScreen(),
+      null => const _UnsupportedRoleScreen(),
     };
   }
 }

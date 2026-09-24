@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:novadis_cri/models/user_role.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/features/dashboard/models/dashboard_models.dart';
 import 'package:novadis_cri/features/dashboard/providers/dashboard_providers.dart';
@@ -369,7 +370,9 @@ class _TechnicianHeader extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  technician.role ?? 'Technicien',
+                  UserRole.fromString(technician.role)?.label ??
+                      technician.role ??
+                      'Technicien',
                   style: TextStyle(
                     fontSize: 16,
                     color: AppTheme.primaryContent,

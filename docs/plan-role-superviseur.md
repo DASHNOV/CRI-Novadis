@@ -102,14 +102,18 @@ Règles invariantes (inchangées) :
 - [x] Commit : `Refactor(front): permissions par capacité`.
 
 ### Phase 4 — Front : interface Superviseur
-- [ ] `screens/role_home_screen.dart` : `UserRole.supervisor => SupervisorMainScreen()`.
-- [ ] `screens/supervisor/supervisor_main_screen.dart` : reprend `AdminMainScreen` **sans** « Nouveau CRI ». Onglets : Vue Globale, Tous les CRI, Documents, Paramètres. Factoriser la liste d'onglets plutôt que dupliquer l'écran (cf. leçon de la carte CRI dupliquée).
-- [ ] `GlobalHistoryScreen` réutilisé tel quel : `CriCard` sans poubelle (pas de `CriManageAny`) ; fiche détail `CriDetailsDialog` avec `canEdit` / `canDelete` / `canToggleSignature` = `false`.
-- [ ] Masquer toute entrée vers `/cri-form`, `/cri/new/*`, `/cri/edit/*` (FAB, raccourcis d'accueil, dashboards).
-- [ ] `app_router.dart` : garde `redirect` par permission sur `/cri-form`, `/cri/new/*`, `/cri/edit/*` (→ `CriCreate`), `/dashboard*` (→ `GlobalStats`). Filet d'UX, la sécurité reste l'API.
-- [ ] Hors ligne : ne pas démarrer `SyncService` ni lire les brouillons locaux pour un superviseur (vérifier `pendingCriCountProvider` et les appels `syncPendingCris()`).
-- [ ] Libellé du rôle « Superviseur » : `profile_screen.dart`, carte compte de `admin_screen.dart`, `technician_dashboard_page.dart` l.372.
-- [ ] Commit : `Feat(front): espace Superviseur`.
+- [x] `screens/role_home_screen.dart` : `UserRole.supervisor => SupervisorMainScreen()`.
+  > `UserRole.admin || UserRole.supervisor => AdminMainScreen(role: …)` ; rôle absent / inconnu → écran « Rôle non pris en charge ».
+- [x] `screens/supervisor/supervisor_main_screen.dart` : reprend `AdminMainScreen` **sans** « Nouveau CRI ». Onglets : Vue Globale, Tous les CRI, Documents, Paramètres. Factoriser la liste d'onglets plutôt que dupliquer l'écran (cf. leçon de la carte CRI dupliquée).
+  > **Réalisé autrement** : pas de nouvel écran. `AdminMainScreen` est devenu l'espace de gestion commun ; chaque onglet porte sa permission (`Accueil` → `PersonalStats`, `Nouveau CRI` → `CriCreate`…) et n'est affiché que si le rôle la possède. Le rôle lui est passé par `RoleHomeScreen`.
+- [x] `GlobalHistoryScreen` réutilisé tel quel : `CriCard` sans poubelle (pas de `CriManageAny`) ; fiche détail `CriDetailsDialog` avec `canEdit` / `canDelete` / `canToggleSignature` = `false`.
+- [x] Masquer toute entrée vers `/cri-form`, `/cri/new/*`, `/cri/edit/*` (FAB, raccourcis d'accueil, dashboards).
+  > Documents : renommer / supprimer / sélection réservés aux documents gérables (`DocumentsManageAny` ou propriétaire).
+- [x] `app_router.dart` : garde `redirect` par permission sur `/cri-form`, `/cri/new/*`, `/cri/edit/*` (→ `CriCreate`), `/dashboard*` (→ `GlobalStats`). Filet d'UX, la sécurité reste l'API.
+  > `/dashboard` seul reste libre (`MainDashboardPage` sert aussi le mode personnel) ; garde sur `/dashboard/site/*` et `/dashboard/technician/*`. `/cri/view/*` gardé aussi (il ouvre le formulaire d'édition).
+- [x] Hors ligne : ne pas démarrer `SyncService` ni lire les brouillons locaux pour un superviseur (vérifier `pendingCriCountProvider` et les appels `syncPendingCris()`).
+- [x] Libellé du rôle « Superviseur » : `profile_screen.dart`, carte compte de `admin_screen.dart`, `technician_dashboard_page.dart` l.372.
+- [x] Commit : `Feat(front): espace Superviseur`.
 
 ### Phase 5 — Docs, compte de test, recette
 - [ ] Docs :

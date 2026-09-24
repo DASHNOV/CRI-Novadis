@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:novadis_cri/models/user_role.dart';
 import 'package:novadis_cri/core/storage/storage_service.dart';
 import 'package:novadis_cri/core/config/app_router.dart';
 import 'package:novadis_cri/core/widgets/content_container.dart';
@@ -120,7 +121,7 @@ class AdminScreen extends HookConsumerWidget {
 
             _AccountCard(
               name: nameSnap.data ?? 'Utilisateur',
-              role: role ?? '',
+              role: UserRole.fromString(role)?.label ?? role ?? '',
             ),
             const SizedBox(height: AppTheme.space24),
 

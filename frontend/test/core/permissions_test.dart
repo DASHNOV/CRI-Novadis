@@ -39,6 +39,28 @@ void main() {
       expect(service.hasPermission(Permission.criManageAny), isFalse);
     });
 
+    test('superviseur : lecture globale, aucune écriture sur les CRI', () {
+      final service = PermissionsService('Supervisor');
+      expect(service.role, UserRole.supervisor);
+      for (final p in [
+        Permission.criReadAll,
+        Permission.globalStats,
+        Permission.exportAll,
+        Permission.documentsReadAll,
+      ]) {
+        expect(service.hasPermission(p), isTrue, reason: p);
+      }
+      for (final p in [
+        Permission.criCreate,
+        Permission.criManageAny,
+        Permission.personalStats,
+        Permission.documentsManageAny,
+        Permission.systemAdmin,
+      ]) {
+        expect(service.hasPermission(p), isFalse, reason: p);
+      }
+    });
+
     test('admin : toutes les capacités', () {
       final service = PermissionsService('Admin');
       for (final p in rolePermissions[UserRole.admin]!) {

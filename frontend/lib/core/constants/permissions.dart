@@ -53,5 +53,10 @@ const Map<UserRole, Set<String>> rolePermissions = {
     Permission.documentsManageAny,
     Permission.systemAdmin,
   },
-  UserRole.supervisor: {},
+  UserRole.supervisor: {
+    Permission.criReadAll,
+    Permission.globalStats,
+    Permission.exportAll,
+    Permission.documentsReadAll,
+  },
 };
