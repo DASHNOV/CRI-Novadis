@@ -110,9 +110,6 @@ var allowedOrigins = builder.Configuration
     .Get<string[]>() ?? Array.Empty<string>();
 var isDev = builder.Environment.IsDevelopment();
 
-// Domaines Vercel preview autorisés en CORS
-var vercelPattern = ".vercel.app";
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowMobileApp", policy =>
@@ -133,10 +130,9 @@ builder.Services.AddCors(options =>
                 if (host.StartsWith("192.168.") || host.StartsWith("10.")) return true;
             }
 
-            // Previews Vercel (toutes les URLs *.vercel.app)
-            if (Uri.TryCreate(origin, UriKind.Absolute, out var vercelUri)
-                && vercelUri.Host.EndsWith(vercelPattern, StringComparison.OrdinalIgnoreCase))
-                return true;
+            // Pas de joker *.vercel.app : n'importe quel compte Vercel obtiendrait un canal
+            // authentifié vers l'API. Une preview à autoriser s'ajoute explicitement
+            // dans Cors:AllowedOrigins (variable d'environnement Cors__AllowedOrigins__N).
 
             return false;
         })
