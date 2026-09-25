@@ -38,12 +38,16 @@ class SitesMap extends StatelessWidget {
   /// Ouvre la page du site ; `null` : pas de bouton (périmètre personnel).
   final ValueChanged<MapSite>? onOpenSite;
 
+  /// Libellés des sites sans activité (légende, fiche).
+  final InactiveSiteLabels labels;
+
   const SitesMap({
     super.key,
     required this.sites,
     required this.selected,
     required this.onSelect,
     this.onOpenSite,
+    this.labels = InactiveSiteLabels.period,
   });
 
   @override
@@ -53,6 +57,7 @@ class SitesMap extends StatelessWidget {
       selected: selected,
       onSelect: onSelect,
       onOpenSite: onOpenSite,
+      labels: labels,
     );
     if (!GoogleMapsConfig.isConfigured) return ign;
 
@@ -87,6 +92,7 @@ class SitesMap extends StatelessWidget {
                   selected: selected,
                   onSelect: onSelect,
                   onOpenSite: onOpenSite,
+                  labels: labels,
                 ),
         );
       },
@@ -101,12 +107,16 @@ class IgnSitesMap extends StatefulWidget {
   final ValueChanged<MapSite?> onSelect;
   final ValueChanged<MapSite>? onOpenSite;
 
+  /// Libellés des sites sans activité (légende, fiche).
+  final InactiveSiteLabels labels;
+
   const IgnSitesMap({
     super.key,
     required this.sites,
     required this.selected,
     required this.onSelect,
     this.onOpenSite,
+    this.labels = InactiveSiteLabels.period,
   });
 
   @override
@@ -198,7 +208,7 @@ class _IgnSitesMapState extends State<IgnSitesMap> {
               ),
             ],
           ),
-          const Positioned(top: 8, left: 8, child: SiteMapLegend()),
+          Positioned(top: 8, left: 8, child: SiteMapLegend(labels: widget.labels)),
           if (widget.selected != null)
             Positioned(
               left: 8,
@@ -210,6 +220,7 @@ class _IgnSitesMapState extends State<IgnSitesMap> {
                 onOpen: widget.onOpenSite == null || widget.selected!.stats == null
                     ? null
                     : () => widget.onOpenSite!(widget.selected!),
+                labels: widget.labels,
               ),
             ),
         ],
