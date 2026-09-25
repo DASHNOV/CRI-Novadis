@@ -18,6 +18,13 @@ class SiteStats {
   final int techniciensDistincts;
   final Map<String, int>? repartitionParCategorie;
 
+  /// Coordonnées WGS84 (`null` : site en saisie libre, non géocodé ou à vérifier).
+  final double? latitude;
+  final double? longitude;
+
+  /// `housenumber`, `street`, `locality`, `municipality` (centre de la commune).
+  final String? geocodagePrecision;
+
   const SiteStats({
     this.siteID,
     required this.siteNom,
@@ -36,6 +43,9 @@ class SiteStats {
     this.derniereIntervention,
     this.techniciensDistincts = 0,
     this.repartitionParCategorie,
+    this.latitude,
+    this.longitude,
+    this.geocodagePrecision,
   });
 
   factory SiteStats.fromJson(Map<String, dynamic> json) {
@@ -59,6 +69,9 @@ class SiteStats {
           : null,
       techniciensDistincts: json['techniciensDistincts'] ?? 0,
       repartitionParCategorie: _parseMap(json['repartitionParCategorie']),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      geocodagePrecision: json['geocodagePrecision'] as String?,
     );
   }
 
@@ -69,6 +82,11 @@ class SiteStats {
     }
     return null;
   }
+
+  bool get hasLocation => latitude != null && longitude != null;
+
+  /// Position approximative : seule la commune a été reconnue.
+  bool get isApproximateLocation => geocodagePrecision == 'municipality';
 
   String get dureeMoyenneFormatee {
     if (dureeMoyenneMinutes == null) return '-';

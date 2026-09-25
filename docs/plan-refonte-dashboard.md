@@ -120,26 +120,22 @@ Branche : `feat/dashboard-alertes`
 Branche : `feat/sites-map`
 
 **Backend**
-- [ ] `Site` : `Latitude`, `Longitude` (`double?`), `GeocodageScore` (`double?`), `GeocodeLe` (`DateTime?`), `CoordonneesManuelles` (`bool`) + migration
-- [ ] Service de géocodage (API Adresse / Géoplateforme) :
-  - à la création / modification d'adresse d'un site (sauf si `CoordonneesManuelles`)
-  - score < 0,5 → coordonnées non enregistrées, site marqué « à vérifier »
-  - repli sur le centre de la commune si seule la ville est connue
-- [ ] Endpoint admin `POST /api/sites/geocode` : rattrapage des sites existants (mode CSV groupé)
-- [ ] Lancer le rattrapage sur la base de dev et mesurer le taux de réussite
-- [ ] `SiteStatsDto` : ajouter `Latitude`, `Longitude`
+- [x] `Site` : `Latitude`, `Longitude`, `GeocodageScore`, `GeocodagePrecision` (ajouté : signale une position au centre de la commune), `GeocodeLe`, `CoordonneesManuelles` + migration `AddSiteGeocoding` **générée par la CLI** (6 colonnes, aucun `AlterColumn` parasite ; snapshot vérifié en Release)
+- [x] Service de géocodage (Géoplateforme, `POST /geocodage/search/csv`, lots de 1 000) — format vérifié sur le service réel avec des adresses publiques :
+  - les sites sont créés / modifiés uniquement par l'import CSV → adresse modifiée = `GeocodeLe` remis à nul (sauf coordonnées manuelles), géocodage en fin d'import
+  - score < 0,5 → pas de coordonnées, score conservé (« à vérifier »)
+  - seule la ville connue → le service renvoie le centre de la commune (`municipality`), affiché « position approximative »
+- [x] Endpoint admin `POST /api/sites/geocode` (`force` pour tout refaire)
+- [ ] **À faire après déploiement** : lancer le rattrapage et mesurer le taux de réussite — impossible ici (ni base ni CSV des sites en local, cf. `deployment.md`)
+- [x] `SiteStatsDto` : `Latitude`, `Longitude`, `GeocodagePrecision`
 
 **Frontend**
-- [ ] Paquets : `flutter_map`, `latlong2`, `flutter_map_marker_cluster`
-- [ ] `SitesMapWidget` :
-  - fond Plan IGN
-  - taille du marqueur = nombre de CRI sur la période
-  - couleur = taux de récurrence (seuils §2)
-  - regroupement des marqueurs au dézoom
-  - clic → panneau : site, client, CRI, récurrence, dernière intervention, bouton « Voir le site »
-- [ ] Onglet Sites : bascule Liste / Carte ; côte à côte sur desktop (clic liste → centrage carte)
-- [ ] Bandeau « N sites non localisés » avec lien de correction
-- [ ] Route `/dashboard/site/:siteId` basée sur `SiteID`
+- [x] Paquets : `flutter_map` 8.3, `latlong2` 0.9, `flutter_map_marker_cluster` 8.2
+- [x] `SitesMap` (`widgets/sites_map.dart`) : fond Plan IGN (WMTS Géoplateforme, URL vérifiée), taille ∝ √CRI, couleur vert / orange / rouge (< 10 / 10–20 / > 20 %), regroupement, légende, attribution ; clic → fiche (site, client, CRI, retours, dernière intervention, « Voir le site » en périmètre équipe)
+- [x] Onglet Sites : bascule Liste / Carte ; sur grand écran carte + liste côte à côte, clic dans la liste → centrage
+- [x] Bandeau « N sites non localisés » (dépliable, précise « hors référentiel » ou n° de site). Pas de lien de correction : la correction manuelle est la tâche optionnelle ci-dessous
+- [x] Route site : **conservée sur le nom** (décision). Les stats par site regroupent aussi les CRI en saisie libre, sans `SiteID` ; une route par ID les rendrait inaccessibles. Le nom est la clé commune des stats, de la carte et de la page site
+- [x] Tests : `SiteGeocodingTests` (6, dont la réponse réelle du service), `sites_map_test.dart` (3) ; `flutter build web` OK
 
 **Plus tard (optionnel)**
 - [ ] Correction manuelle : déplacement du marqueur sur la fiche site (`CoordonneesManuelles = true`)

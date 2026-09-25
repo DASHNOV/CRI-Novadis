@@ -22,5 +22,12 @@ namespace NovadisApi.Models.DTOs
         public DateTime? DerniereIntervention { get; set; }
         public int TechniciensDistincts { get; set; }
         public Dictionary<string, int>? RepartitionParCategorie { get; set; }
+
+        /// <summary>Coordonnées du site normalisé (<c>null</c> : saisie libre, non géocodé ou à vérifier).</summary>
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+
+        /// <summary><c>housenumber</c>, <c>street</c>, <c>locality</c>, <c>municipality</c> (centre de la commune).</summary>
+        public string? GeocodagePrecision { get; set; }
     }
 }

@@ -91,6 +91,12 @@ erDiagram
         string Pays
         string ResponsableDorigine
         datetime DateDeCreation
+        double Latitude
+        double Longitude
+        double GeocodageScore
+        string GeocodagePrecision
+        datetime GeocodeLe
+        bool CoordonneesManuelles
     }
 
     CLIENT {
@@ -199,7 +205,8 @@ Users(__Id__: uuid, Email[U], PasswordHash, Role, FirstName,
       -- Role ∈ {'Technician', 'Admin', 'Supervisor'} (valeur inconnue = connexion refusée)
 
 Sites(__Numero__: int, NomDuSite, Adresse, Ville, CodePostal,
-      Pays, ResponsableDorigine, DateDeCreation)
+      Pays, ResponsableDorigine, DateDeCreation,
+      Latitude, Longitude, GeocodageScore, GeocodagePrecision, GeocodeLe, CoordonneesManuelles)
 
 ClientsNormalises(__Id__: uuid, RaisonSociale, Contact, Telephone,
       Email, Adresse, CodePostal, Ville, Pays, Actif,
