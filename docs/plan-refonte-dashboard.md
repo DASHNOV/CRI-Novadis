@@ -166,6 +166,20 @@ Branche : `fix/dashboard-retours`
 
 ---
 
+### Carte Google Maps et itinéraire (2026-09-25)
+Branche : `feat/google-maps`
+
+- [x] `GET /api/sites/map` : tous les sites du référentiel ayant des coordonnées, + nombre de sites sans coordonnées
+- [x] Carte : **tous les sites du référentiel** ; ceux qui ont des CRI sur la période en couleur (taux de retour) et à la taille du volume, les autres en gris (`buildMapSites`, rapprochement par n° de site puis par nom)
+- [x] Fond **Google Maps** (`google_maps_flutter`) si `GOOGLE_MAPS_API_KEY` est fourni au build, sinon Plan IGN ; SDK web chargé à la demande avec `markerclusterer` 2.5.3 ; marqueurs dessinés à la volée (pas de marqueurs colorés natifs sur le web) ; légende et fiche au-dessus de la carte via `pointer_interceptor`
+- [x] Bouton **Itinéraire** sur la fiche de chaque site : Google Maps (coordonnées, ou adresse si la position n'est que le centre de la commune)
+- [x] Android : clé transmise par dart-define → Gradle → manifeste ; **Kotlin 2.1 → 2.3.10** (exigé par `google_maps_flutter_android`) et migration `kotlinOptions` → `compilerOptions` ; APK debug construit
+- [x] Bouton « Carte » coupé en deux (coche du bouton segmenté retirée)
+- [ ] **À faire** : créer et restreindre la clé Google (cf. `deployment.md`) ; non testé avec une vraie clé (aucune disponible ici)
+- [x] Tests : `sites_map_test.dart` (fusion référentiel / activité, itinéraire, égalité), test d'endpoint `/api/sites/map`
+
+---
+
 ## 5. Ordre recommandé
 
 1. **Phase 1** — des chiffres faux font plus de tort qu'un dashboard incomplet

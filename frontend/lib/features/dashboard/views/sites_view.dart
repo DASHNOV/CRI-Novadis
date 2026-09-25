@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/core/theme/responsive.dart';
+import 'package:novadis_cri/features/dashboard/models/map_site.dart';
 import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
 import 'package:novadis_cri/features/dashboard/providers/dashboard_providers.dart';
 import 'package:novadis_cri/features/dashboard/views/general_view.dart';
@@ -10,6 +10,7 @@ import 'package:novadis_cri/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:novadis_cri/features/dashboard/widgets/searchable_sorted_list.dart';
 import 'package:novadis_cri/features/dashboard/widgets/site_stats_widgets.dart';
 import 'package:novadis_cri/features/dashboard/widgets/sites_map.dart';
+import 'package:novadis_cri/models/site_location.dart';
 import 'package:novadis_cri/models/site_stats.dart';
 
 enum _SitesDisplay { list, map }
@@ -39,17 +40,13 @@ class SitesView extends ConsumerStatefulWidget {
 
 class _SitesViewState extends ConsumerState<SitesView> {
   _SitesDisplay _display = _SitesDisplay.list;
-  final _mapController = MapController();
-  SiteStats? _selected;
+  MapSite? _selected;
+  List<MapSite> _mapSites = const [];
 
+  /// Clic dans la liste (vue côte à côte) : sélectionne le site sur la carte.
   void _focus(SiteStats site) {
-    setState(() => _selected = site);
-    if (!site.hasLocation) return;
-    try {
-      _mapController.move(SitesMap.pointOf(site), 13);
-    } catch (_) {
-      // Carte pas encore affichée (premier rendu) : la sélection suffit.
-    }
+    final point = _mapSites.where((m) => m.stats == site).firstOrNull;
+    setState(() => _selected = point);
   }
 
   void _open(SiteStats site) => openSiteDashboard(context, site);
@@ -90,6 +87,8 @@ class _SitesViewState extends ConsumerState<SitesView> {
                 ),
               ],
               selected: {_display},
+              // Sans la coche, « Carte » tient sur une ligne.
+              showSelectedIcon: false,
               onSelectionChanged: (s) => setState(() => _display = s.first),
             ),
           ],
@@ -140,17 +139,42 @@ class _SitesViewState extends ConsumerState<SitesView> {
   }
 
   Widget _mapLayout(BuildContext context, List<SiteStats> sites) {
+    return ref.watch(sitesMapProvider).when(
+          data: (referentiel) => _mapWithList(context, sites, referentiel.sites, referentiel.nonLocalises),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppTheme.space24),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (e, _) => DashboardCard(
+            child: DashboardErrorView(
+              error: e,
+              onRetry: () => ref.invalidate(sitesMapProvider),
+            ),
+          ),
+        );
+  }
+
+  Widget _mapWithList(
+    BuildContext context,
+    List<SiteStats> sites,
+    List<SiteLocation> referentiel,
+    int referentielNonLocalises,
+  ) {
+    _mapSites = buildMapSites(sites, referentiel);
+    final placed = _mapSites.map((m) => m.stats).whereType<SiteStats>().toSet();
+    final unlocated = sites.where((s) => !placed.contains(s)).toList();
+
     final map = SizedBox(
-      height: 520,
+      height: 560,
       child: SitesMap(
-        sites: sites,
-        mapController: _mapController,
+        sites: _mapSites,
         selected: _selected,
         onSelect: (site) => setState(() => _selected = site),
-        onOpenSite: widget.isGlobal ? _open : null,
+        onOpenSite: widget.isGlobal ? (site) => _open(site.stats!) : null,
       ),
     );
-    final unlocated = sites.where((s) => !s.hasLocation).toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -158,8 +182,8 @@ class _SitesViewState extends ConsumerState<SitesView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (unlocated.isNotEmpty) ...[
-              _UnlocatedSites(sites: unlocated),
+            if (unlocated.isNotEmpty || referentielNonLocalises > 0) ...[
+              _UnlocatedSites(sites: unlocated, referentielNonLocalises: referentielNonLocalises),
               const SizedBox(height: AppTheme.space12),
             ],
             if (sideBySide)
@@ -168,7 +192,7 @@ class _SitesViewState extends ConsumerState<SitesView> {
                 children: [
                   Expanded(flex: 3, child: map),
                   const SizedBox(width: AppTheme.space16),
-                  // Liste : un clic centre la carte ; « Voir le site » est sur la fiche.
+                  // Liste : un clic sélectionne le site sur la carte.
                   Expanded(flex: 2, child: _list(sites, onTap: _focus)),
                 ],
               )
@@ -185,18 +209,27 @@ class _SitesViewState extends ConsumerState<SitesView> {
 /// non géocodée ou résultat trop incertain.
 class _UnlocatedSites extends StatelessWidget {
   final List<SiteStats> sites;
-  const _UnlocatedSites({required this.sites});
+
+  /// Sites du référentiel sans coordonnées (avec ou sans activité).
+  final int referentielNonLocalises;
+
+  const _UnlocatedSites({required this.sites, required this.referentielNonLocalises});
 
   @override
   Widget build(BuildContext context) {
     final n = sites.length;
+    final title = [
+      if (n > 0) '$n site${n > 1 ? 's' : ''} actif${n > 1 ? 's' : ''} non localisé${n > 1 ? 's' : ''}',
+      if (referentielNonLocalises > 0)
+        '$referentielNonLocalises site${referentielNonLocalises > 1 ? 's' : ''} du référentiel sans coordonnées',
+    ].join(' · ');
     return DashboardCard(
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           leading: const Icon(Icons.location_off_outlined, color: AppTheme.warning),
           title: Text(
-            '$n site${n > 1 ? 's' : ''} non localisé${n > 1 ? 's' : ''}',
+            title,
             style: TextStyle(fontSize: 14, color: AppTheme.textPrimary),
           ),
           subtitle: Text(

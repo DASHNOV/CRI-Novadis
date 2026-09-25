@@ -5,16 +5,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
-import 'package:novadis_cri/features/dashboard/widgets/site_stats_widgets.dart';
-import 'package:novadis_cri/models/site_stats.dart';
+import 'package:novadis_cri/features/dashboard/models/map_site.dart';
+import 'package:novadis_cri/features/dashboard/services/google_maps_config.dart';
+import 'package:novadis_cri/features/dashboard/widgets/google_sites_map.dart';
+import 'package:novadis_cri/features/dashboard/widgets/site_map_overlays.dart';
 
-/// Couleur d'un site selon son taux de récurrence : vert < 10 %, orange jusqu'à
-/// 20 %, rouge au-delà (seuil des alertes).
-Color recurrenceColor(double tauxRecurrence) {
-  if (tauxRecurrence > kRecurrenceAlertThreshold) return AppTheme.error;
-  if (tauxRecurrence >= 10) return AppTheme.warning;
-  return AppTheme.success;
-}
+export 'site_map_overlays.dart' show recurrenceColor, siteColor;
 
 /// Diamètre d'un marqueur : surface proportionnelle au nombre de CRI, bornée.
 double markerDiameter(int interventions, int maxInterventions) {
@@ -24,59 +20,131 @@ double markerDiameter(int interventions, int maxInterventions) {
   return min + (max - min) * ratio.clamp(0, 1);
 }
 
-/// Carte des sites de la période : fond Plan IGN (Géoplateforme), marqueurs
-/// regroupés au dézoom, taille = volume, couleur = récurrence. Un clic
-/// sélectionne le site ([onSelect]) ; la fiche s'affiche en bas de la carte.
+/// Site sans CRI sur la période : petit point gris.
+const double inactiveMarkerDiameter = 12;
+
+double diameterOf(MapSite site, int maxInterventions) => site.stats == null
+    ? inactiveMarkerDiameter
+    : markerDiameter(site.stats!.totalInterventions, maxInterventions);
+
+/// Carte des sites : Google Maps si une clé est fournie au build
+/// ([GoogleMapsConfig]), sinon Plan IGN. Même légende, même fiche (avec
+/// « Itinéraire ») dans les deux cas.
 class SitesMap extends StatelessWidget {
-  final List<SiteStats> sites;
-  final MapController mapController;
-  final SiteStats? selected;
-  final ValueChanged<SiteStats?> onSelect;
+  final List<MapSite> sites;
+  final MapSite? selected;
+  final ValueChanged<MapSite?> onSelect;
 
   /// Ouvre la page du site ; `null` : pas de bouton (périmètre personnel).
-  final ValueChanged<SiteStats>? onOpenSite;
+  final ValueChanged<MapSite>? onOpenSite;
 
   const SitesMap({
     super.key,
     required this.sites,
-    required this.mapController,
     required this.selected,
     required this.onSelect,
     this.onOpenSite,
   });
 
+  @override
+  Widget build(BuildContext context) {
+    final ign = IgnSitesMap(
+      sites: sites,
+      selected: selected,
+      onSelect: onSelect,
+      onOpenSite: onOpenSite,
+    );
+    if (!GoogleMapsConfig.isConfigured) return ign;
+
+    return FutureBuilder<void>(
+      future: GoogleMapsConfig.ensureLoaded(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return ign; // SDK injoignable : repli IGN
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return GoogleSitesMap(
+          sites: sites,
+          selected: selected,
+          onSelect: onSelect,
+          onOpenSite: onOpenSite,
+        );
+      },
+    );
+  }
+}
+
+/// Carte Plan IGN (Géoplateforme) : repli sans clé Google Maps.
+class IgnSitesMap extends StatefulWidget {
+  final List<MapSite> sites;
+  final MapSite? selected;
+  final ValueChanged<MapSite?> onSelect;
+  final ValueChanged<MapSite>? onOpenSite;
+
+  const IgnSitesMap({
+    super.key,
+    required this.sites,
+    required this.selected,
+    required this.onSelect,
+    this.onOpenSite,
+  });
+
+  @override
+  State<IgnSitesMap> createState() => _IgnSitesMapState();
+}
+
+class _IgnSitesMapState extends State<IgnSitesMap> {
   static const _planIgn = 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile'
       '&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal'
       '&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}';
 
-  static final _france = LatLng(46.6, 2.4);
+  final _controller = MapController();
 
-  static LatLng pointOf(SiteStats site) => LatLng(site.latitude!, site.longitude!);
+  @override
+  void didUpdateWidget(IgnSitesMap old) {
+    super.didUpdateWidget(old);
+    final site = widget.selected;
+    if (site != null && site != old.selected) {
+      try {
+        _controller.move(
+          LatLng(site.latitude, site.longitude),
+          math.max(_controller.camera.zoom, 12),
+        );
+      } catch (_) {
+        // Carte pas encore affichée : la sélection suffit.
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final located = sites.where((s) => s.hasLocation).toList();
-    final maxCount = located.fold<int>(0, (m, s) => math.max(m, s.totalInterventions));
+    final sites = widget.sites;
+    final maxCount = sites.fold<int>(0, (m, s) => math.max(m, s.stats?.totalInterventions ?? 0));
+    // Sites actifs dessinés en dernier : au-dessus des sites gris.
+    final ordered = [
+      ...sites.where((s) => s.stats == null),
+      ...sites.where((s) => s.stats != null),
+    ];
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       child: Stack(
         children: [
           FlutterMap(
-            mapController: mapController,
+            mapController: _controller,
             options: MapOptions(
-              initialCenter: _france,
+              initialCenter: const LatLng(46.6, 2.4),
               initialZoom: 5.3,
-              initialCameraFit: located.length >= 2
+              initialCameraFit: sites.length >= 2
                   ? CameraFit.coordinates(
-                      coordinates: located.map(pointOf).toList(),
+                      coordinates: sites.map((s) => LatLng(s.latitude, s.longitude)).toList(),
                       padding: const EdgeInsets.all(48),
                       maxZoom: 13,
                     )
                   : null,
               minZoom: 3,
               maxZoom: 18,
-              onTap: (_, __) => onSelect(null),
+              onTap: (_, __) => widget.onSelect(null),
             ),
             children: [
               TileLayer(
@@ -88,17 +156,17 @@ class SitesMap extends StatelessWidget {
                 options: MarkerClusterLayerOptions(
                   maxClusterRadius: 45,
                   size: const Size(40, 40),
-                  markers: located.map((site) {
-                    final diameter = markerDiameter(site.totalInterventions, maxCount);
+                  markers: ordered.map((site) {
+                    final diameter = diameterOf(site, maxCount);
                     return Marker(
-                      key: ValueKey(site.siteNom),
-                      point: pointOf(site),
+                      key: ValueKey('${site.name}@${site.latitude},${site.longitude}'),
+                      point: LatLng(site.latitude, site.longitude),
                       width: diameter,
                       height: diameter,
                       child: _SiteMarker(
                         site: site,
-                        selected: identical(site, selected) || site.siteNom == selected?.siteNom,
-                        onTap: () => onSelect(site),
+                        selected: site == widget.selected,
+                        onTap: () => widget.onSelect(site),
                       ),
                     );
                   }).toList(),
@@ -110,16 +178,18 @@ class SitesMap extends StatelessWidget {
               ),
             ],
           ),
-          const Positioned(top: 8, left: 8, child: _Legend()),
-          if (selected != null)
+          const Positioned(top: 8, left: 8, child: SiteMapLegend()),
+          if (widget.selected != null)
             Positioned(
               left: 8,
               right: 8,
               bottom: 32,
-              child: _SelectedSiteCard(
-                site: selected!,
-                onClose: () => onSelect(null),
-                onOpen: onOpenSite == null ? null : () => onOpenSite!(selected!),
+              child: SelectedSiteCard(
+                site: widget.selected!,
+                onClose: () => widget.onSelect(null),
+                onOpen: widget.onOpenSite == null || widget.selected!.stats == null
+                    ? null
+                    : () => widget.onOpenSite!(widget.selected!),
               ),
             ),
         ],
@@ -129,7 +199,7 @@ class SitesMap extends StatelessWidget {
 }
 
 class _SiteMarker extends StatelessWidget {
-  final SiteStats site;
+  final MapSite site;
   final bool selected;
   final VoidCallback onTap;
 
@@ -137,14 +207,14 @@ class _SiteMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = recurrenceColor(site.tauxRecurrence);
+    final stats = site.stats;
     return Tooltip(
-      message: '${site.siteNom} — ${site.totalInterventions} CRI',
+      message: stats == null ? site.name : '${site.name} — ${stats.totalInterventions} CRI',
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.85),
+            color: siteColor(site).withValues(alpha: 0.85),
             shape: BoxShape.circle,
             border: Border.all(
               color: selected ? AppTheme.textPrimary : Colors.white,
@@ -177,111 +247,4 @@ class _ClusterBadge extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Legend extends StatelessWidget {
-  const _Legend();
-
-  @override
-  Widget build(BuildContext context) {
-    Widget item(Color color, String label) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
-          ],
-        );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Taux de retour',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
-          ),
-          item(AppTheme.success, '< 10 %'),
-          item(AppTheme.warning, '10 – 20 %'),
-          item(AppTheme.error, '> 20 %'),
-          const Text('Taille : nombre de CRI', style: TextStyle(fontSize: 10, color: Colors.black54)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SelectedSiteCard extends StatelessWidget {
-  final SiteStats site;
-  final VoidCallback onClose;
-  final VoidCallback? onOpen;
-
-  const _SelectedSiteCard({required this.site, required this.onClose, this.onOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    final muted = TextStyle(fontSize: 12, color: AppTheme.textTertiary);
-    return Material(
-      elevation: 4,
-      color: AppTheme.surface,
-      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    site.siteNom,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  if (site.clientNom != null) Text(site.clientNom!, style: muted),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${site.totalInterventions} CRI · retours ${site.tauxRecurrence.toStringAsFixed(0)} %'
-                    '${site.derniereIntervention != null ? ' · dernière le ${_date(site.derniereIntervention!)}' : ''}',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                  ),
-                  if (site.isLocatedFromCri)
-                    Text(
-                      site.isApproximateLocation
-                          ? 'Position approximative : commune saisie dans le CRI'
-                          : 'Position d\'après l\'adresse saisie dans le CRI',
-                      style: muted,
-                    )
-                  else if (site.isApproximateLocation)
-                    Text('Position approximative (centre de la commune)', style: muted),
-                ],
-              ),
-            ),
-            if (onOpen != null)
-              TextButton(onPressed: onOpen, child: const Text('Voir le site')),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Fermer',
-              onPressed: onClose,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String _date(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
