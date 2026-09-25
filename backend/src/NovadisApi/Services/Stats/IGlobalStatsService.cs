@@ -30,4 +30,10 @@ public interface IGlobalStatsService
     /// <summary>Dernières interventions (date d'intervention décroissante), 1 à 100.</summary>
     Task<IReadOnlyList<RecentInterventionDto>> GetRecentInterventionsAsync(
         StatsFilter filter, int limit, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sites à forte récurrence (sur la période), services non résolus depuis au moins
+    /// <paramref name="staleDays"/> jours et escalades niveau 2 (sur la période).
+    /// </summary>
+    Task<DashboardAlertsDto> GetAlertsAsync(StatsFilter filter, int staleDays, CancellationToken ct = default);
 }

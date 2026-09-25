@@ -11,6 +11,7 @@ import 'package:novadis_cri/features/dashboard/providers/dashboard_providers.dar
 import 'package:novadis_cri/features/dashboard/widgets/admin_request_types_pie_widget.dart';
 import 'package:novadis_cri/features/dashboard/widgets/admin_technician_site_heatmap_widget.dart';
 import 'package:novadis_cri/features/dashboard/widgets/admin_top_sites_chart_widget.dart';
+import 'package:novadis_cri/features/dashboard/widgets/dashboard_alerts_banner.dart';
 import 'package:novadis_cri/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:novadis_cri/features/dashboard/widgets/intervention_list_item.dart';
 import 'package:novadis_cri/features/dashboard/widgets/kpi_card_widget.dart';
@@ -45,6 +46,8 @@ class GeneralView extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            DashboardAlertsBanner(query: query, isGlobal: isGlobal),
+            spacing,
             DashboardKpis(query: query),
             spacing,
             pair(EvolutionCard(query: query), TopSitesSummary(query: query, isGlobal: isGlobal)),

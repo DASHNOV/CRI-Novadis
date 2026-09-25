@@ -109,11 +109,12 @@ Branche : `feat/dashboard-ux`
 ### Phase 4 — Alertes
 Branche : `feat/dashboard-alertes`
 
-- [ ] Back : endpoint `GET /api/global/stats/alerts` :
-  - sites avec récurrence > 20 %
-  - CRI non résolus depuis plus de X jours (X configurable)
+- [x] Back : `GET /api/global/stats/alerts` (+ `/api/personal/dashboard/alerts`) :
+  - sites avec récurrence > 20 %, **à partir de 3 CRI** (1 retour sur 1 = 100 % : bruit)
+  - services non résolus (`nonResolu`, `partiellementResolu`, `enAttentePieces`, `escaladeNiveau2`) dont l'intervention date d'au moins X jours — `staleDays`, 14 par défaut ; les projets en cours ne comptent pas
   - escalades niveau 2 sur la période
-- [ ] Front : bandeau d'alertes en haut de la vue Général, chaque alerte cliquable
+- [x] Front : bandeau « À traiter » en tête de la vue Général — une ligne dépliable par type (masquée à zéro), sites et CRI cliquables, choix 7 / 14 / 30 jours ; « Rien à signaler » sinon
+- [x] Tests : `DashboardAlertsTests` (4), traduction SQL, `dashboard_alerts_test.dart` (3)
 
 ### Phase 5 — Carte des sites
 Branche : `feat/sites-map`

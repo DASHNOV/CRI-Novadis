@@ -82,6 +82,42 @@ namespace NovadisApi.Models.DTOs
         public int Resolu { get; set; }
     }
 
+    /// <summary>Alertes du dashboard : ce qui demande une action.</summary>
+    public class DashboardAlertsDto
+    {
+        /// <summary>Taux de récurrence (%) au-delà duquel un site est signalé.</summary>
+        public double SeuilRecurrence { get; set; }
+
+        /// <summary>Un site n'est signalé qu'à partir de ce nombre d'interventions (1 retour sur 1 = 100 % : bruit).</summary>
+        public int MinInterventionsSite { get; set; }
+
+        /// <summary>Ancienneté (jours) à partir de laquelle un CRI non résolu est signalé.</summary>
+        public int JoursSansResolution { get; set; }
+
+        public List<SiteAlertDto> SitesRecurrence { get; set; } = new();
+
+        public int CriNonResolusTotal { get; set; }
+
+        /// <summary>Les plus anciens d'abord, au plus <see cref="MaxItems"/>.</summary>
+        public List<RecentInterventionDto> CriNonResolus { get; set; } = new();
+
+        public int EscaladesTotal { get; set; }
+
+        /// <summary>Les plus récentes d'abord, au plus <see cref="MaxItems"/>.</summary>
+        public List<RecentInterventionDto> Escalades { get; set; } = new();
+
+        public const int MaxItems = 20;
+    }
+
+    public class SiteAlertDto
+    {
+        public string SiteNom { get; set; } = string.Empty;
+        public string? ClientNom { get; set; }
+        public int TotalInterventions { get; set; }
+        public int TotalRecurrenceRequise { get; set; }
+        public double TauxRecurrence { get; set; }
+    }
+
     /// <summary>Intervention récente (liste du dashboard), sans le JSON <c>Data</c>.</summary>
     public class RecentInterventionDto
     {
