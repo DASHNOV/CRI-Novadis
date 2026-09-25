@@ -17,24 +17,6 @@ enum DashboardPeriod {
   /// [days] derniers jours, aujourd'hui compris : bornes calculées par l'API
   /// (`StatsFilter.LastDays`).
   const DashboardPeriod(this.label, this.days);
-
-  /// Formate le label de la période
-  String get periodLabel {
-    switch (this) {
-      case DashboardPeriod.day:
-        return "Aujourd'hui";
-      case DashboardPeriod.week:
-        return '7 derniers jours';
-      case DashboardPeriod.month:
-        return '30 derniers jours';
-      case DashboardPeriod.quarter:
-        return '90 derniers jours';
-      case DashboardPeriod.year:
-        return '365 derniers jours';
-      case DashboardPeriod.custom:
-        return 'Plage personnalisée';
-    }
-  }
 }
 
 /// Modèle de technicien pour les statistiques

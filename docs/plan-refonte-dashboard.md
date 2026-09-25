@@ -143,10 +143,14 @@ Branche : `feat/sites-map`
 ### Phase 6 — Nettoyage
 Branche : `refactor/dashboard`
 
-- [ ] Découper `main_dashboard_page.dart` en widgets (`admin_general_view`, `sites_view`, `technicians_view`, `section_card`, `async_card`)
-- [ ] Un seul widget de carte site et un seul de carte technicien (fin des doublons admin / technicien)
-- [ ] `[AUDIT_CLEAN]` puis suppression des fichiers orphelins validés
-- [ ] Mettre à jour `docs/architecture.md` et `docs/conventions.md`
+- [x] Découpage (fait en phase 3) : `views/` (`general_view`, `sites_view`, `technicians_view`), `widgets/dashboard_cards` (cadres, section, erreur) ; `main_dashboard_page.dart` 1 713 → ~310 lignes
+- [x] Un seul widget site (`SiteListTile` / `SiteStatsCard`) et technicien (`TechnicianListTile` / `TechnicianStatsCard`), communs aux deux périmètres
+- [x] `[AUDIT_CLEAN]` (accord du 2026-09-25) — 1 089 lignes supprimées :
+  - `dashboard_common_widgets` : `TechnicianSelectorWidget`, `DashboardHeaderWidget`, `ConnectionStatusBadge` ; `DashboardPeriod.periodLabel` ; 16 membres inutilisés de `chart_config`
+  - `StatsApiService` : `getTechnicianActivity`, `getActivityChartData`, `getPersonalMonthlyStats` + modèles `technician_activity`, `monthly_activity` (endpoints backend conservés pour les APK installés)
+  - ancien export CSV local jamais branché : `dashboard_csv_*`, `technician_stats_csv_*`, interfaces, fabriques, 7 providers
+  - signalés, hors périmètre (non supprimés) : providers inutilisés de `export_providers.dart` côté documents (`filteredDocumentsProvider`, `pdfDocumentsProvider`, `csvDocumentsProvider`, `criDocumentsProvider`, `documentSortProvider`, `selectedDocumentsProvider`, `xlsxDocumentsProvider`)
+- [x] Docs : `architecture.md`, `conventions.md` (§ Statistiques & dashboard)
 
 ---
 

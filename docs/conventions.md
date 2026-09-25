@@ -66,6 +66,14 @@ Controllers/ → Services (interface + impl) → NovadisDbContext → PostgreSQL
 - **Valeurs de rôle** : `RoleNames.Technician` / `Admin` / `Supervisor`. Tout rôle lu en base passe par `UserRoleExtensions.Normalize()` avant de sortir (JWT, DTO) — jamais `user.Role` brut. Rôle inconnu → `FromString` renvoie `null`, jamais Technician.
 - **User ID** : `User.FindFirst(ClaimTypes.NameIdentifier)?.Value` via helper `GetCurrentUserId()`
 
+### Statistiques & dashboard
+
+- **Calcul côté API uniquement** : le frontend n'agrège jamais de CRI pour un chiffre du dashboard (plus de `DashboardRepository` local).
+- **Un seul filtre** : `StatsFilter` (période alignée sur minuit, `from` / `to`, technicien, site) appliqué par `filter.Apply(query)`. Jamais `UtcNow.AddDays(-n)` ni `isAfter(début)` : le premier jour saisi à minuit serait perdu.
+- **Nouvel endpoint de stats** : `[FromQuery] StatsQuery` → `TryToFilter` (400 si incohérent) ; version personnelle dans `PersonalDashboardController` en forçant `TechnicianId` ; ajout d'un cas dans `StatsSqlTranslationTests` (la base InMemory ne vérifie pas la traduction SQL).
+- **Frontend** : providers `family` sur `StatsQuery` ; périmètre choisi par `dashboardIsGlobalProvider` (capacité `GlobalStats`) ; erreurs via `DashboardErrorView` (« Réessayer » = `ref.invalidate` du seul provider en échec).
+- **Pas de valeur inventée** : une mesure indisponible vaut `null` et s'affiche « — ».
+
 ---
 
 ## Gestion des erreurs

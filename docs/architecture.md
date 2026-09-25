@@ -218,7 +218,7 @@ lib/
 │   │   ├── pages/                 # MainDashboard (en-tête, filtres, export, onglets), SiteDashboard, TechnicianDashboard
 │   │   ├── views/                 # Onglets : general_view, sites_view, technicians_view
 │   │   ├── widgets/               # dashboard_cards (cadres, erreur + Réessayer), site/technician_stats_widgets, searchable_sorted_list, graphiques
-│   │   ├── services/              # dashboard_csv_export (CSV des chiffres affichés, web + mobile)
+│   │   ├── services/              # dashboard_csv_export (CSV des chiffres affichés, web + mobile) — seul export CSV du dashboard
 │   │   └── providers/             # période (préréglages + plage), onglet (persistés), providers family sur StatsQuery
 │   ├── cri_form/                  # Saisie CRI (Projet + Service)
 │   ├── history/                   # Historique (perso + global) — carte CRI partagée : widgets/cri_card.dart

@@ -14,26 +14,6 @@ abstract class BasePdfGeneratorService {
   Future<dynamic> generateCriProjetPDF(String criId);
 }
 
-abstract class BaseDashboardCsvService {
-  Future<dynamic> exportInterventions({
-    required DateTime startDate,
-    required DateTime endDate,
-    String? interventionType,
-    String? status,
-  });
-  Future<dynamic> exportKPISynthesis({required DateTime startDate, required DateTime endDate});
-  Future<dynamic> exportTopSites({required DateTime startDate, required DateTime endDate, int limit = 10});
-  Future<List<dynamic>> exportAll({required DateTime startDate, required DateTime endDate});
-}
-
-abstract class BaseTechnicianStatsCsvService {
-  Future<dynamic> exportTechnicianStats({
-    required String technicianName,
-    required DateTime startDate,
-    required DateTime endDate,
-  });
-}
-
 abstract class BaseFileManagementService {
   Future<bool> openFile(String filePath);
   Future<bool> shareFile(String filePath, {String? subject, String? text});
