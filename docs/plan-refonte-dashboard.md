@@ -154,6 +154,18 @@ Branche : `refactor/dashboard`
 
 ---
 
+### Retours après première mise en route (2026-09-25)
+Branche : `fix/dashboard-retours`
+
+- [x] Sites regroupés sans tenir compte de la casse ni des espaces (« Test » / « test ») — stats par site, par technicien, répartitions, filtre `site=`
+- [x] Carte : repli par l'adresse saisie dans le CRI pour les sites hors référentiel (cache `AdressesGeocodees`, rempli par `POST /api/sites/geocode`) ; fiche « Position d'après l'adresse saisie dans le CRI »
+- [x] Menu « Non résolus depuis N j » tronqué → menu contextuel
+- [x] Étiquettes de courbe collées en bout d'axe → comptées depuis le dernier point
+- [x] Tendance « +366.7% » → « 367 % » (entier au-delà de 100 %, virgule décimale)
+- Constats sans correction : durée moyenne de 1h pile partout = valeur des CRI eux-mêmes (`interventionDurationMinutes` = 60, défaut du formulaire probable) ; « Résolues : 0 » cohérent avec les statuts saisis
+
+---
+
 ## 5. Ordre recommandé
 
 1. **Phase 1** — des chiffres faux font plus de tort qu'un dashboard incomplet

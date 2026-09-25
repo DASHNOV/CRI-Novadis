@@ -18,6 +18,7 @@ namespace NovadisApi.Data
 
         // Table des sites NovaDIS
         public DbSet<Site> Sites { get; set; }
+        public DbSet<AdresseGeocodee> AdressesGeocodees { get; set; }
 
         // Table des clients normalisés (Phase 2)
         public DbSet<Client> ClientsNormalises { get; set; }
