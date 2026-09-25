@@ -150,13 +150,14 @@ class TechnicianSelectorWidget extends StatelessWidget {
                                     color: AppTheme.textPrimary,
                                   ),
                                 ),
-                                Text(
-                                  tech.email,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppTheme.textTertiary,
+                                if (tech.email != null)
+                                  Text(
+                                    tech.email!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.textTertiary,
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           ),

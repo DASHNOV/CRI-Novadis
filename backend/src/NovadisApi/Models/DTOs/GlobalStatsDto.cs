@@ -5,6 +5,13 @@ namespace NovadisApi.Models.DTOs
     /// </summary>
     public class GlobalStatsDto
     {
+        /// <summary>Nombre de CRI sur la période demandée (toute la base sans période).</summary>
+        public int TotalInterventions { get; set; }
+
+        /// <summary>
+        /// Ancien nom de <see cref="TotalInterventions"/>, trompeur : la valeur suit la
+        /// période demandée, pas le mois en cours. Conservé pour les APK déjà installés.
+        /// </summary>
         public int TotalCeMois { get; set; }
         public int TotalSignes { get; set; }
         public int TotalEnAttente { get; set; }

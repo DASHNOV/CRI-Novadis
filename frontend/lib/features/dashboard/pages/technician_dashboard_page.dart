@@ -124,18 +124,12 @@ class _TechnicianDashboardPageState
                               InterventionTrendChartWidget(
                                 data: stats.workloadCurve,
                                 title: 'Interventions',
-                                subtitle: 'Nombre d\'interventions par semaine',
+                                subtitle:
+                                    'Nombre d\'interventions par semaine (8 dernières semaines)',
                               ),
                               const SizedBox(height: AppTheme.space24),
 
-                              const SizedBox(height: AppTheme.space24),
-
-                              // 3. (Deleted)
-
-                              // 4. Site fréquenté
-                              const SizedBox(height: AppTheme.space24),
-
-                              // 4. Site fréquenté
+                              // 3. Sites fréquentés
                               if (stats.topSites.isNotEmpty) ...[
                                 Container(
                                   padding: const EdgeInsets.all(AppTheme.space16),
@@ -379,21 +373,23 @@ class _TechnicianHeader extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: AppTheme.space4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.email_outlined,
-                      size: 16,
-                      color: AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: AppTheme.space8),
-                    Text(
-                      technician.email,
-                      style: TextStyle(color: AppTheme.textSecondary),
-                    ),
-                  ],
-                ),
+                if (technician.email != null) ...[
+                  const SizedBox(height: AppTheme.space4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.email_outlined,
+                        size: 16,
+                        color: AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: AppTheme.space8),
+                      Text(
+                        technician.email!,
+                        style: TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

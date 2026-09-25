@@ -88,12 +88,13 @@ class TechnicianKpiCardsWidget extends StatelessWidget {
   }
 
   Widget _buildTimeKpis() {
-    final standardDevSign = kpis.standardDeviation >= 0 ? '+' : '';
-    final standardDevColor = kpis.standardDeviation < 0
-        ? ChartConfig.trendUpColor
-        : (kpis.standardDeviation > 0
-              ? ChartConfig.trendDownColor
-              : AppTheme.textTertiary);
+    final deviation = kpis.standardDeviation;
+    final standardDevSign = (deviation ?? 0) >= 0 ? '+' : '';
+    final standardDevColor = deviation == null || deviation == 0
+        ? AppTheme.textTertiary
+        : (deviation < 0
+              ? ChartConfig.trendUpColor
+              : ChartConfig.trendDownColor);
 
     return Row(
       children: [
@@ -110,11 +111,14 @@ class TechnicianKpiCardsWidget extends StatelessWidget {
         Expanded(
           child: _TechnicianKpiCard(
             title: 'Écart Std',
-            value:
-                '$standardDevSign${formatDurationMinutes(kpis.standardDeviation.abs())}',
+            value: deviation == null
+                ? '—'
+                : '$standardDevSign${formatDurationMinutes(deviation.abs())}',
             icon: Icons.trending_flat,
             color: standardDevColor,
-            subtitle: kpis.standardDeviation < 0 ? 'Plus rapide' : 'Plus lent',
+            subtitle: deviation == null
+                ? 'Non mesuré'
+                : (deviation < 0 ? 'Plus rapide' : 'Plus lent'),
             isLoading: isLoading,
           ),
         ),
@@ -122,10 +126,12 @@ class TechnicianKpiCardsWidget extends StatelessWidget {
         Expanded(
           child: _TechnicianKpiCard(
             title: 'Ponctualité',
-            value: '${kpis.punctualityRate.toStringAsFixed(0)}%',
+            value: kpis.punctualityRate == null
+                ? '—'
+                : '${kpis.punctualityRate!.toStringAsFixed(0)}%',
             icon: Icons.access_time_filled,
             color: ChartConfig.kpiColors['punctuality']!,
-            subtitle: '±15min',
+            subtitle: kpis.punctualityRate == null ? 'Non mesurée' : '±15min',
             isLoading: isLoading,
           ),
         ),

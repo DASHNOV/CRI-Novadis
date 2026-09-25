@@ -120,13 +120,14 @@ duration?, status, data?, technicianSignature?, clientSignature?
 **Réponse `/stats`** (`GlobalStatsDto`)
 ```json
 {
-  "totalCeMois": 0, "totalSignes": 0, "totalEnAttente": 0,
+  "totalInterventions": 0, "totalCeMois": 0, "totalSignes": 0, "totalEnAttente": 0,
   "techniciensActifs": 0, "dureeMoyenneMinutes": 0.0,
   "totalProjets": 0, "totalServices": 0,
   "totalResolu": 0, "totalNonResolu": 0, "totalRecurrenceRequise": 0,
   "repartitionParVille": { "Paris": 5, "Lyon": 2 }
 }
 ```
+- `totalInterventions` : CRI de la période demandée. `totalCeMois` = même valeur, ancien nom trompeur conservé pour les APK installés (ne plus l'utiliser).
 
 ---
 

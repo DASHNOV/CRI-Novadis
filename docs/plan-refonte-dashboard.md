@@ -68,13 +68,13 @@ Rendre le dashboard **juste** (chiffres cohérents avec la période), **rapide**
 ### Phase 1 — Justesse des chiffres
 Branche : `fix/dashboard-kpis`
 
-- [ ] Filtrer « Réalisées » et « En cours » sur la période
-- [ ] Renseigner « Prévues » ou retirer la carte si la notion n'existe pas côté données
-- [ ] Bornes inclusives (`!isBefore(start)`) partout dans `kpi_calculator_service.dart`
-- [ ] Courbe d'évolution : granularité selon la période (heure / jour / semaine / mois)
-- [ ] Vérifier `totalCeMois` côté back et le renommer si besoin
-- [ ] Page technicien : retirer les valeurs inventées (ponctualité, écart-type, radar, email) en attendant de vraies données ; identifier par ID
-- [ ] Tests unitaires `KpiCalculatorService` sur les bornes et le filtrage par période
+- [x] Filtrer « Réalisées » et « En cours » sur la période — « En cours » devient « Non terminées » (= total − réalisées) ; « Réalisées » = service Résolu / projet Terminé, même règle que `TotalResolu` côté API
+- [x] « Prévues » : la notion n'existe pas (un CRI rend compte d'une intervention faite) → carte remplacée par « Sites actifs »
+- [x] Bornes inclusives partout : `DashboardPeriod.contains()` — `[minuit J-(n-1), minuit J+1[`
+- [x] Courbe d'évolution : suit la période, un point par jour, 7 jours minimum (« Jour »). Granularités semaine / mois : phase 2 (côté API), avec les nouvelles périodes
+- [x] `totalCeMois` : suivait déjà `period` côté back, seul le nom trompait → `TotalInterventions` ajouté, `TotalCeMois` conservé (APK installés)
+- [x] Page technicien : email inventé retiré, ponctualité et écart-type à `null` (« Non mesuré »), radar calculé sur les vraies catégories ; courbe hebdomadaire corrigée (toujours à 0 : `interventionCount` jamais rempli, projets ignorés). Identification par ID → phase 2 (les CRI locaux n'ont pas l'ID du technicien)
+- [x] Tests : `test/features/dashboard/kpi_calculator_service_test.dart` (9), `GlobalStatsPeriodTests`
 
 ### Phase 2 — Tout passer par l'API
 Branche : `feat/dashboard-api`
@@ -82,6 +82,7 @@ Branche : `feat/dashboard-api`
 - [ ] Back : endpoint évolution temporelle (`GET /api/global/stats/evolution?period=&granularity=`)
 - [ ] Back : endpoint interventions récentes (`GET /api/global/stats/recent?limit=`)
 - [ ] Back : stats du technicien connecté filtrées par période (vue non-admin)
+- [ ] Page technicien (admin) : identifiée par l'ID (GUID) du technicien, données API
 - [ ] Back : paramètres `from` / `to` en plus de `period` (plage personnalisée)
 - [ ] Front : remplacer `DashboardRepository` (calcul local) par des providers API
 - [ ] Front : supprimer le double appel `getAllCris()`

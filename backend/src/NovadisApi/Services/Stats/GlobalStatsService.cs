@@ -21,9 +21,11 @@ public sealed class GlobalStatsService : IGlobalStatsService
     {
         var baseQuery = FilterByPeriod(_context.CRIForms, periodDays);
 
+        var total = await baseQuery.CountAsync(ct);
         var stats = new GlobalStatsDto
         {
-            TotalCeMois = await baseQuery.CountAsync(ct),
+            TotalInterventions = total,
+            TotalCeMois = total,
             TotalSignes = await baseQuery.CountAsync(c => c.ClientSignature != null, ct),
             TotalEnAttente = await baseQuery.CountAsync(c => c.ClientSignature == null, ct),
             TechniciensActifs = await baseQuery.Select(c => c.TechnicianId).Distinct().CountAsync(ct),
