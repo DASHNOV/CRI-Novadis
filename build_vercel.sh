@@ -7,7 +7,7 @@ echo "Projet root: $PROJECT_ROOT"
 # 1. Cloner Flutter
 echo "Clonage de Flutter..."
 if [ ! -d "$PROJECT_ROOT/_f" ]; then
-  git clone https://github.com/flutter/flutter.git -b 3.38.7 --depth 1 "$PROJECT_ROOT/_f"
+  git clone https://github.com/flutter/flutter.git -b 3.41.4 --depth 1 "$PROJECT_ROOT/_f"
 fi
 
 # 2. Ajouter Flutter au PATH
