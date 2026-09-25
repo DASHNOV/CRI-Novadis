@@ -184,7 +184,8 @@ Branche : `feat/google-maps`
 Branche : `feat/tech-sites-map`
 
 - [x] Route `/sites-map` (tout utilisateur connecté) : carte plein écran de tous les sites, recherche (sans accents), fiche avec « Itinéraire »
-- [x] Raccourci « Carte des sites » sur l'accueil technicien (choix : pas de 6e onglet, la barre mobile n'en affiche que 5)
+- [x] ~~Raccourci~~ → **carte intégrée à l'accueil technicien** (section « Carte des sites », 440 px, recherche + fiche + itinéraire ; bouton « Plein écran » vers `/sites-map`). Composant commun `SitesMapPanel`. Pas de 6e onglet : la barre mobile n'en affiche que 5
+- [x] Carte Google dans une page qui défile : gestes prioritaires à la carte (`EagerGestureRecognizer`)
 - [x] En couleur : les sites où l'utilisateur est déjà intervenu, sur **tout son historique** (ses propres CRI pour un technicien, via `/api/personal/dashboard/by-site`) ; libellés « Jamais visité »
 - [x] Tests : `sites_map_page_test.dart` (route sans capacité, recherche → fiche)
 

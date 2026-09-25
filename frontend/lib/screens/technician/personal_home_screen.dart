@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:novadis_cri/core/config/app_router.dart';
+import 'package:novadis_cri/features/dashboard/widgets/sites_map_panel.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:novadis_cri/core/providers/main_nav_provider.dart';
 import 'package:intl/intl.dart';
@@ -139,7 +140,7 @@ class _PersonalHomeScreenState extends ConsumerState<PersonalHomeScreen> {
                   const Gap(AppTheme.space16),
 
                   // Carte des sites + itinéraire
-                  _buildSitesMapShortcut(),
+                  _buildSitesMapSection(),
                   const Gap(AppTheme.space24),
 
                   // Heatmap activité annuelle (style GitHub)
@@ -169,47 +170,36 @@ class _PersonalHomeScreenState extends ConsumerState<PersonalHomeScreen> {
 
   // ─── Carte des sites ───
 
-  Widget _buildSitesMapShortcut() {
-    return _HoverCard(
-      onTap: () => context.push(AppRouter.sitesMap),
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.space16),
-        child: Row(
+  /// Carte de tous les sites (recherche, itinéraire) directement sur l'accueil ;
+  /// « Plein écran » ouvre la même carte sur toute la page.
+  Widget _buildSitesMapSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppTheme.space12),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryContent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              ),
-              child: Icon(Icons.map_rounded, color: AppTheme.primaryContent),
-            ),
-            const SizedBox(width: AppTheme.space16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Carte des sites',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Tous les sites et l\'itinéraire pour s\'y rendre',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                  ),
-                ],
+            Text(
+              'Carte des sites',
+              style: GoogleFonts.inter(
+                color: AppTheme.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.3,
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary),
+            TextButton.icon(
+              onPressed: () => context.push(AppRouter.sitesMap),
+              icon: const Icon(Icons.fullscreen_rounded, size: 20),
+              label: const Text('Plein écran'),
+            ),
           ],
         ),
-      ),
-    );
+        const Gap(AppTheme.space8),
+        // Hauteur fixe : la page défile autour de la carte.
+        const SizedBox(height: 440, child: SitesMapPanel()),
+      ],
+    ).animate().fadeIn(duration: AppTheme.animNormal, delay: 150.ms);
   }
 
   // ─── Header ───

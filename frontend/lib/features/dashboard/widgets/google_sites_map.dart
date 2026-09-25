@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
@@ -140,6 +142,11 @@ class _GoogleSitesMapState extends State<GoogleSitesMap> {
             markers: markers,
             clusterManagers: {_clusterManager},
             mapToolbarEnabled: false,
+            // Carte dans une page qui défile (accueil technicien) : les gestes
+            // sur la carte la déplacent au lieu de faire défiler la page.
+            gestureRecognizers: {
+              Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
+            },
             onTap: (_) => widget.onSelect(null),
             onMapCreated: (controller) {
               _controller = controller;
