@@ -7,6 +7,7 @@ using NovadisApi.Models.DTOs;
 using System.Globalization;
 using System.Text;
 using NovadisApi.Authorization;
+using NovadisApi.Services.Geocoding;
 
 namespace NovadisApi.Controllers
 {
@@ -17,11 +18,16 @@ namespace NovadisApi.Controllers
     {
         private readonly NovadisDbContext _context;
         private readonly ILogger<SitesController> _logger;
+        private readonly ISiteGeocodingService _geocoding;
 
-        public SitesController(NovadisDbContext context, ILogger<SitesController> logger)
+        public SitesController(
+            NovadisDbContext context,
+            ILogger<SitesController> logger,
+            ISiteGeocodingService geocoding)
         {
             _context = context;
             _logger = logger;
+            _geocoding = geocoding;
         }
 
         /// <summary>
@@ -112,7 +118,20 @@ namespace NovadisApi.Controllers
                 }
 
                 var count = await ImportCsvFile(csvPath);
-                return Ok(ApiResponse<object>.SuccessResponse(new { imported = count },
+
+                // Géocodage des sites nouveaux ou déplacés : un échec (service IGN
+                // indisponible) ne remet pas l'import en cause, POST /geocode rattrape.
+                GeocodingSummary? geocoding = null;
+                try
+                {
+                    geocoding = await _geocoding.GeocodePendingAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Géocodage après import des sites en échec");
+                }
+
+                return Ok(ApiResponse<object>.SuccessResponse(new { imported = count, geocoding },
                     $"{count} sites importés avec succès"));
             }
             catch (Exception ex)
@@ -153,6 +172,7 @@ namespace NovadisApi.Controllers
                 var existing = await _context.Sites.FindAsync(numero);
                 if (existing != null)
                 {
+                    _geocoding.ResetIfAddressChanged(existing, site.Adresse, site.CodePostal, site.Ville);
                     existing.NomDuSite = site.NomDuSite;
                     existing.Adresse = site.Adresse;
                     existing.Ville = site.Ville;
@@ -170,6 +190,28 @@ namespace NovadisApi.Controllers
 
             await _context.SaveChangesAsync();
             return count;
+        }
+
+        /// <summary>
+        /// Géocode les sites qui ne l'ont pas encore été (ou tous avec <c>force=true</c>),
+        /// hors coordonnées placées à la main. Rattrapage des sites existants.
+        /// </summary>
+        [HttpPost("geocode")]
+        [Authorize(Policy = Capabilities.SystemAdmin)]
+        public async Task<ActionResult<ApiResponse<GeocodingSummary>>> Geocode(
+            [FromQuery] bool force = false, CancellationToken ct = default)
+        {
+            try
+            {
+                var summary = await _geocoding.GeocodePendingAsync(force, ct);
+                return Ok(ApiResponse<GeocodingSummary>.SuccessResponse(summary));
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Service de géocodage injoignable");
+                return StatusCode(502, ApiResponse<GeocodingSummary>.ErrorResponse(
+                    "Le service de géocodage (Géoplateforme IGN) est injoignable. Réessayer plus tard."));
+            }
         }
 
         private static string? NullIfEmpty(string value)

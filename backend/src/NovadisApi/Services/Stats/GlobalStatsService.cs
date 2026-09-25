@@ -198,6 +198,9 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 c.SiteID,
                 SiteNom = c.Site != null ? c.Site.NomDuSite : c.ClientSite!,
                 SiteVille = c.Site != null ? c.Site.Ville : c.Ville,
+                Latitude = c.Site != null ? c.Site.Latitude : null,
+                Longitude = c.Site != null ? c.Site.Longitude : null,
+                GeocodagePrecision = c.Site != null ? c.Site.GeocodagePrecision : null,
                 ClientNom = c.Client != null ? c.Client.RaisonSociale : c.ClientName,
                 c.InterventionType,
                 c.Category,
@@ -248,7 +251,11 @@ public sealed class GlobalStatsService : IGlobalStatsService
                     TopCategorieCount = topCategorie?.Count() ?? 0,
                     DerniereIntervention = g.Max(c => c.InterventionDate),
                     TechniciensDistincts = g.Select(c => c.TechnicianId).Distinct().Count(),
-                    RepartitionParCategorie = repartitionCat.Count > 0 ? repartitionCat : null
+                    RepartitionParCategorie = repartitionCat.Count > 0 ? repartitionCat : null,
+                    // Le premier CRI rattaché au site normalisé porte ses coordonnées.
+                    Latitude = g.FirstOrDefault(c => c.Latitude != null)?.Latitude,
+                    Longitude = g.FirstOrDefault(c => c.Latitude != null)?.Longitude,
+                    GeocodagePrecision = g.FirstOrDefault(c => c.Latitude != null)?.GeocodagePrecision,
                 };
             })
             .OrderByDescending(s => s.TotalInterventions)

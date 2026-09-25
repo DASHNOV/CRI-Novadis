@@ -189,6 +189,16 @@ builder.Services.AddScoped<ISiteSummaryService, SiteSummaryService>();
 builder.Services.AddScoped<NovadisApi.Services.Stats.IGlobalStatsService, NovadisApi.Services.Stats.GlobalStatsService>();
 builder.Services.AddScoped<IXlsxExportService, XlsxExportService>();
 
+// Géocodage des sites (carte du dashboard) : Géoplateforme IGN, sans clé.
+builder.Services.AddHttpClient(NovadisApi.Services.Geocoding.GeoplateformeGeocoder.HttpClientName, client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Geocoding:BaseUrl"]
+        ?? NovadisApi.Services.Geocoding.GeoplateformeGeocoder.DefaultBaseUrl);
+    client.Timeout = TimeSpan.FromMinutes(2);
+});
+builder.Services.AddScoped<NovadisApi.Services.Geocoding.IGeocoder, NovadisApi.Services.Geocoding.GeoplateformeGeocoder>();
+builder.Services.AddScoped<NovadisApi.Services.Geocoding.ISiteGeocodingService, NovadisApi.Services.Geocoding.SiteGeocodingService>();
+
 // Stockage des exports (filesystem local, MinIO-ready)
 builder.Services.AddSingleton<IObjectStorageService, LocalFileObjectStorage>();
 

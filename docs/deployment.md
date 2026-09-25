@@ -77,6 +77,12 @@ Déroulé côté serveur (`scripts/deploy-remote.sh`) : image en service mémori
 redémarrage → attente de `/api/health/ready` (150 s) → en cas d'échec, retour sur l'image
 précédente et workflow **en échec**. Les 5 dernières images taguées sont conservées.
 
+### Carte des sites (une fois, après le déploiement de la phase 5 du dashboard)
+
+- Le VPS doit joindre `https://data.geopf.fr` en sortie (géocodage IGN, gratuit, sans clé, 50 req/s max par IP — un lot de 1 000 sites = 1 requête).
+- Géocoder les sites existants : `POST /api/sites/geocode` (compte Admin). Lire le bilan `{ traites, localises, aVerifier, sansAdresse }` : il mesure la qualité des adresses du référentiel. Les nouveaux sites et les adresses modifiées sont ensuite géocodés à chaque import.
+- Côté web, les tuiles Plan IGN viennent de `data.geopf.fr` (pas de CSP à adapter aujourd'hui) ; l'attribution « Plan IGN — Géoplateforme » est affichée sur la carte.
+
 ### Prérequis serveur (une fois)
 
 L'utilisateur SSH du déploiement (`VPS_USER`) doit pouvoir lancer `docker` et **écrire

@@ -57,6 +57,7 @@ NovadisApi/
 │   ├── Export/                    # XlsxExportService
 │   ├── Storage/                   # LocalFileObjectStorage (MinIO-ready)
 │   ├── Stats/                     # GlobalStatsService, StatsFilter (période / technicien / site)
+│   ├── Geocoding/                 # GeoplateformeGeocoder (CSV groupé IGN), SiteGeocodingService (seuil 0,5, manuel protégé)
 │   └── Maintenance/               # DataRetentionService (purge RGPD)
 ├── Data/
 │   ├── NovadisDbContext.cs
