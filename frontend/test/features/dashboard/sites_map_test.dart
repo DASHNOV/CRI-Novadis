@@ -45,6 +45,20 @@ void main() {
     expect(SiteStats.fromJson({'siteNom': 'Libre', 'totalInterventions': 1}).hasLocation, isFalse);
   });
 
+  test('bilan de géocodage lisible', () {
+    expect(
+      GeocodingSummary.fromJson({
+        'traites': 8,
+        'localises': 7,
+        'aVerifier': 1,
+        'adressesCriTraitees': 3,
+        'adressesCriLocalisees': 3,
+      }).message,
+      '7 / 8 sites du référentiel localisés · 1 à vérifier · 3 / 3 adresses de CRI localisées',
+    );
+    expect(const GeocodingSummary().message, 'Rien à localiser : tout est déjà à jour.');
+  });
+
   group('points de la carte', () {
     test('tous les sites du référentiel, activité fusionnée par numéro ou par nom', () {
       final stats = [

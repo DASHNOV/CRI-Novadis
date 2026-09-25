@@ -189,6 +189,19 @@ class StatsApiService {
     return SitesMapData.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Géocode les sites en attente (admin, capacité SystemAdmin) ; [force] refait tout.
+  Future<GeocodingSummary> geocodeSites({bool force = false}) async {
+    try {
+      final response = await _dio.post(
+        '/sites/geocode',
+        queryParameters: {'force': force},
+      );
+      return GeocodingSummary.fromJson(response.data['data'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Statistiques par technicien (global uniquement).
   Future<List<TechnicianDetailedStats>> getStatsByTechnician(StatsQuery query) async {
     final data =
