@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:novadis_cri/core/constants/permissions.dart';
@@ -53,13 +54,84 @@ class SelectedPeriodNotifier extends StateNotifier<DashboardPeriod> {
   }
 }
 
+/// Plage de la période « Personnalisée » (bornes incluses), persistée.
+final customRangeProvider =
+    StateNotifierProvider<CustomRangeNotifier, DateTimeRange?>((ref) {
+      return CustomRangeNotifier();
+    });
+
+class CustomRangeNotifier extends StateNotifier<DateTimeRange?> {
+  CustomRangeNotifier() : super(null) {
+    _load();
+  }
+
+  static const _fromKey = 'dashboard_range_from';
+  static const _toKey = 'dashboard_range_to';
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final from = DateTime.tryParse(prefs.getString(_fromKey) ?? '');
+      final to = DateTime.tryParse(prefs.getString(_toKey) ?? '');
+      if (from != null && to != null && !to.isBefore(from)) {
+        state = DateTimeRange(start: from, end: to);
+      }
+    } catch (e) {
+      // Ignore si erreur de chargement
+    }
+  }
+
+  Future<void> setRange(DateTimeRange range) async {
+    state = range;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_fromKey, range.start.toIso8601String());
+      await prefs.setString(_toKey, range.end.toIso8601String());
+    } catch (e) {
+      // Ignore si erreur de sauvegarde
+    }
+  }
+}
+
 /// Mode de vue du dashboard
 enum DashboardViewMode { general, parSite, parTechnicien }
 
-/// Provider pour le mode de vue
-final dashboardViewModeProvider = StateProvider<DashboardViewMode>(
-  (ref) => DashboardViewMode.general,
-);
+/// Onglet du dashboard, persisté comme la période.
+final dashboardViewModeProvider =
+    StateNotifierProvider<DashboardViewModeNotifier, DashboardViewMode>((ref) {
+      return DashboardViewModeNotifier();
+    });
+
+class DashboardViewModeNotifier extends StateNotifier<DashboardViewMode> {
+  DashboardViewModeNotifier() : super(DashboardViewMode.general) {
+    _load();
+  }
+
+  static const _key = 'dashboard_view_mode';
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_key);
+      state = DashboardViewMode.values.firstWhere(
+        (m) => m.name == saved,
+        orElse: () => state,
+      );
+    } catch (e) {
+      // Ignore si erreur de chargement
+    }
+  }
+
+  Future<void> setMode(DashboardViewMode mode) async {
+    state = mode;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_key, mode.name);
+    } catch (e) {
+      // Ignore si erreur de sauvegarde
+    }
+  }
+}
 
 /// `true` : statistiques de toute l'équipe (`/api/global`) ;
 /// `false` : dashboard personnel (`/api/personal/dashboard`, ses propres CRI).
@@ -67,9 +139,16 @@ final dashboardIsGlobalProvider = Provider<bool>((ref) {
   return ref.watch(permissionsProvider).hasPermission(Permission.globalStats);
 });
 
-/// Périmètre du dashboard principal : la période sélectionnée.
+/// Périmètre du dashboard principal : la période sélectionnée
+/// (« Personnalisée » sans plage choisie : 30 derniers jours).
 final dashboardQueryProvider = Provider<StatsQuery>((ref) {
-  return StatsQuery(periodDays: ref.watch(selectedPeriodProvider).days);
+  final period = ref.watch(selectedPeriodProvider);
+  if (period == DashboardPeriod.custom) {
+    final range = ref.watch(customRangeProvider);
+    if (range != null) return StatsQuery(from: range.start, to: range.end);
+    return StatsQuery(periodDays: DashboardPeriod.month.days);
+  }
+  return StatsQuery(periodDays: period.days);
 });
 
 /// KPI du périmètre.

@@ -8,6 +8,7 @@ import 'package:novadis_cri/core/theme/theme_provider.dart';
 import 'package:novadis_cri/core/widgets/content_container.dart';
 import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
 import 'package:novadis_cri/features/dashboard/providers/dashboard_providers.dart';
+import 'package:novadis_cri/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:novadis_cri/features/dashboard/widgets/time_evolution_chart_widget.dart';
 import 'package:novadis_cri/models/recent_intervention.dart';
 import 'package:novadis_cri/models/site_stats.dart';
@@ -54,7 +55,12 @@ class SiteDashboardPage extends ConsumerWidget {
                 child: _buildContent(context, ref, query, sites.first),
               ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Erreur: $error')),
+        error: (error, _) => Center(
+          child: DashboardErrorView(
+            error: error,
+            onRetry: () => ref.invalidate(siteStatsProvider(query)),
+          ),
+        ),
       ),
     );
   }
@@ -102,7 +108,10 @@ class SiteDashboardPage extends ConsumerWidget {
                     ),
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Text('Erreur: $e'),
+                    error: (e, _) => DashboardErrorView(
+                      error: e,
+                      onRetry: () => ref.invalidate(evolutionProvider(query)),
+                    ),
                   ),
               const SizedBox(height: AppTheme.space24),
 

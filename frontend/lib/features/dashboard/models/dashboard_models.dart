@@ -4,7 +4,12 @@
 enum DashboardPeriod {
   day('Jour', 1),
   week('Semaine', 7),
-  month('Mois', 30);
+  month('Mois', 30),
+  quarter('Trimestre', 90),
+  year('Année', 365),
+
+  /// Plage choisie par l'utilisateur (`customRangeProvider`) ; [days] inutilisé.
+  custom('Personnalisée', 0);
 
   final String label;
   final int days;
@@ -22,6 +27,12 @@ enum DashboardPeriod {
         return '7 derniers jours';
       case DashboardPeriod.month:
         return '30 derniers jours';
+      case DashboardPeriod.quarter:
+        return '90 derniers jours';
+      case DashboardPeriod.year:
+        return '365 derniers jours';
+      case DashboardPeriod.custom:
+        return 'Plage personnalisée';
     }
   }
 }

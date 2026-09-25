@@ -86,6 +86,18 @@ public class DashboardEndpointsTests : IClassFixture<NovadisWebApplicationFactor
     }
 
     [Fact]
+    public async Task Stats_CompareWithPreviousPeriodOfSameLength()
+    {
+        // 30 derniers jours : #1, #2, #4 ; 30 jours précédents (J-59 → J-30) : #3.
+        var stats = await Stats().GetGlobalStatsAsync(StatsFilter.LastDays(30));
+        stats.PeriodePrecedente.Should().NotBeNull();
+        stats.PeriodePrecedente!.TotalInterventions.Should().Be(1);
+        stats.PeriodePrecedente.TotalResolu.Should().Be(1);
+
+        (await Stats().GetGlobalStatsAsync(StatsFilter.All)).PeriodePrecedente.Should().BeNull();
+    }
+
+    [Fact]
     public async Task TechnicianAndSiteFilters_Combine()
     {
         var filter = StatsFilter.All with { TechnicianId = _techA, Site = "SiteA" };
