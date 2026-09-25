@@ -87,14 +87,14 @@ précédente et workflow **en échec**. Les 5 dernières images taguées sont co
 
 1. Google Cloud Console : projet avec **compte de facturation** ; activer **Maps JavaScript API** (web) et **Maps SDK for Android**.
 2. Créer une clé et la **restreindre** (elle est lisible dans le navigateur et l'APK) :
-   - web : référents HTTP `https://cri-novadis.tech/*` (+ `http://localhost:*/*` pour le dev) ;
+   - web : référents HTTP `https://cri-novadis.tech/*` (+ `http://localhost:5000/*` pour le dev — la console Google refuse un joker sur le port) ;
    - Android : nom de package `com.example.novadis_cri` + empreinte SHA-1 du certificat de signature ;
    - API autorisées : les deux ci-dessus uniquement.
 3. Web (Vercel) : variable d'environnement `GOOGLE_MAPS_API_KEY` du projet, lue par `build_vercel.sh`.
 4. APK : `flutter build apk --release --dart-define=GOOGLE_MAPS_API_KEY=<clé>` — Gradle reporte la clé dans le manifeste (`com.google.android.geo.API_KEY`).
-5. Dev web : `flutter run -d chrome --dart-define=GOOGLE_MAPS_API_KEY=<clé>`.
+5. Dev web : `flutter run -d chrome --web-port 5000 --dart-define=GOOGLE_MAPS_API_KEY=<clé>`.
 
-Clé refusée par Google (`RefererNotAllowedMapError`, `ApiNotActivatedMapError`, facturation absente…) : la carte **repasse automatiquement en Plan IGN** (icône ⓘ en haut à droite) et la cause exacte est dans la console du navigateur. En dev, `flutter run -d chrome` prend un port aléatoire : fixer `--web-port 5000` et autoriser `http://localhost:5000/*` si le joker de port n'est pas accepté.
+Clé refusée par Google (`RefererNotAllowedMapError`, `ApiNotActivatedMapError`, facturation absente…) : la carte **repasse automatiquement en Plan IGN** (icône ⓘ en haut à droite) et la cause exacte est dans la console du navigateur. En dev, `flutter run -d chrome` prend un port aléatoire : toujours lancer avec `--web-port 5000` (seul port autorisé sur la clé).
 
 Le bouton **Itinéraire** ouvre `https://www.google.com/maps/dir/?api=1&destination=…` (application Google Maps sur mobile, onglet sur le web) : il ne consomme pas la clé et fonctionne aussi avec la carte IGN.
 
