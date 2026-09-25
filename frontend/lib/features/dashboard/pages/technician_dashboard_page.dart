@@ -6,14 +6,13 @@ import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/core/theme/theme_provider.dart';
 import 'package:novadis_cri/core/utils/duration_format.dart';
 import 'package:novadis_cri/core/widgets/content_container.dart';
-import 'package:novadis_cri/features/dashboard/config/chart_config.dart';
 import 'package:novadis_cri/features/dashboard/models/dashboard_models.dart';
 import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
 import 'package:novadis_cri/features/dashboard/providers/dashboard_providers.dart';
+import 'package:novadis_cri/features/dashboard/views/general_view.dart';
+import 'package:novadis_cri/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:novadis_cri/features/dashboard/widgets/dashboard_common_widgets.dart';
 import 'package:novadis_cri/features/dashboard/widgets/intervention_list_item.dart';
-import 'package:novadis_cri/features/dashboard/widgets/kpi_card_widget.dart';
-import 'package:novadis_cri/features/dashboard/widgets/time_evolution_chart_widget.dart';
 
 /// Dashboard d'un technicien (périmètre équipe) : identifié par son ID utilisateur.
 class TechnicianDashboardPage extends ConsumerWidget {
@@ -24,7 +23,6 @@ class TechnicianDashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(themeAnimationProvider);
-    final selectedPeriod = ref.watch(selectedPeriodProvider);
     final query = ref.watch(dashboardQueryProvider).copyWith(
           technicianId: technicianId,
         );
@@ -53,23 +51,14 @@ class TechnicianDashboardPage extends ConsumerWidget {
           children: [
             _TechnicianHeader(technician: technician),
             const SizedBox(height: AppTheme.space16),
-            PeriodFilterWidget(
-              selectedPeriod: selectedPeriod,
-              onPeriodChanged: (period) =>
-                  ref.read(selectedPeriodProvider.notifier).setPeriod(period),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: DashboardPeriodFilter(),
             ),
             const SizedBox(height: AppTheme.space24),
-            _Kpis(query: query),
+            DashboardKpis(query: query),
             const SizedBox(height: AppTheme.space24),
-            ref.watch(evolutionProvider(query)).when(
-                  data: (evolution) => TimeEvolutionChartWidget(
-                    data: evolution.points,
-                    title: 'Interventions',
-                    subtitle: 'Interventions ${evolution.granularityLabel}',
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Text('Erreur: $e'),
-                ),
+            EvolutionCard(query: query),
             const SizedBox(height: AppTheme.space24),
             _FrequentSites(query: query),
             const SizedBox(height: AppTheme.space24),
@@ -78,51 +67,6 @@ class TechnicianDashboardPage extends ConsumerWidget {
         ),
       ),
     );
-  }
-}
-
-class _Kpis extends ConsumerWidget {
-  final StatsQuery query;
-  const _Kpis({required this.query});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(dashboardStatsProvider(query)).when(
-          data: (stats) => KpiGrid(
-            cards: [
-              KpiCard(
-                title: 'Interventions',
-                value: stats.totalInterventions.toString(),
-                icon: Icons.assignment,
-                iconColor: ChartConfig.kpiColors['interventions']!,
-                subtitle: 'Sur la période',
-              ),
-              KpiCard(
-                title: 'Résolues',
-                value: stats.totalResolu.toString(),
-                icon: Icons.check_circle,
-                iconColor: const Color(0xFF10B981),
-                subtitle: 'CRI résolus',
-              ),
-              KpiCard(
-                title: 'Durée moy.',
-                value: stats.dureeMoyenneFormatee,
-                icon: Icons.timer,
-                iconColor: const Color(0xFF6366F1),
-                subtitle: 'Par intervention',
-              ),
-              KpiCard(
-                title: 'Récurrences',
-                value: stats.totalRecurrenceRequise.toString(),
-                icon: Icons.replay,
-                iconColor: AppTheme.error,
-                subtitle: 'Retours nécessaires',
-              ),
-            ],
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Erreur: $e'),
-        );
   }
 }
 
@@ -198,7 +142,12 @@ class _RecentInterventions extends ConsumerWidget {
                         .toList(),
                   ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Erreur: $e'),
+            error: (e, _) => DashboardErrorView(
+              error: e,
+              onRetry: () => ref.invalidate(
+                recentInterventionsProvider((query: query, limit: 10)),
+              ),
+            ),
           ),
     );
   }

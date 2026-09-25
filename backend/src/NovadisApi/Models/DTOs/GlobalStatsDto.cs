@@ -25,5 +25,19 @@ namespace NovadisApi.Models.DTOs
         public int TotalNonResolu { get; set; }
         public int TotalRecurrenceRequise { get; set; }
         public Dictionary<string, int>? RepartitionParVille { get; set; }
+
+        /// <summary>
+        /// Chiffres clés de la période précédente de même durée (tendances), <c>null</c>
+        /// sans période (toute la base : pas de « précédent »).
+        /// </summary>
+        public PeriodComparisonDto? PeriodePrecedente { get; set; }
+    }
+
+    public class PeriodComparisonDto
+    {
+        public int TotalInterventions { get; set; }
+        public int TotalResolu { get; set; }
+        public double? DureeMoyenneMinutes { get; set; }
+        public int TotalRecurrenceRequise { get; set; }
     }
 }

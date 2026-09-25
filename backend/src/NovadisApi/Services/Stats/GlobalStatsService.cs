@@ -49,6 +49,21 @@ public sealed class GlobalStatsService : IGlobalStatsService
             .ToListAsync(ct);
         stats.RepartitionParVille = villeStats.ToDictionary(v => v.Ville, v => v.Count);
 
+        // Tendances : mêmes chiffres clés sur la période précédente de même durée.
+        if (filter.Previous() is { } previous)
+        {
+            var previousQuery = previous.Apply(_context.CRIForms);
+            stats.PeriodePrecedente = new PeriodComparisonDto
+            {
+                TotalInterventions = await previousQuery.CountAsync(ct),
+                TotalResolu = await previousQuery.CountAsync(c => c.ResolutionStatus == "resolu", ct),
+                DureeMoyenneMinutes = await previousQuery
+                    .Where(c => c.DureeMinutes != null && c.DureeMinutes > 0)
+                    .AverageAsync(c => (double?)c.DureeMinutes, ct),
+                TotalRecurrenceRequise = await previousQuery.CountAsync(c => c.AdditionalInterventionRequired == true, ct),
+            };
+        }
+
         return stats;
     }
 

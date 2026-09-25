@@ -94,15 +94,17 @@ Branche : `feat/dashboard-api`
 ### Phase 3 — Ergonomie
 Branche : `feat/dashboard-ux`
 
-- [ ] Tendances sur les KPI (vs période précédente)
-- [ ] Nouvelles périodes : trimestre, année, plage personnalisée
-- [ ] Recherche + tri (CRI, récurrence, heures) dans Sites et Techniciens
-- [ ] Listes paginées / `SliverList` au lieu de `Column`
-- [ ] Lignes admin cliquables vers les dashboards site / technicien
-- [ ] Widget d'erreur commun avec bouton « Réessayer »
-- [ ] Mémoriser l'onglet actif (comme la période)
-- [ ] Bouton d'export CSV
-- [ ] Seuils responsive unifiés via `Responsive`
+- [x] Tendances sur les KPI : `GlobalStatsDto.PeriodePrecedente` (période précédente de même durée) ; flèches sur Interventions, Résolues, Récurrences (hausse des récurrences en rouge). Pas de flèche sur la durée moyenne (sens ambigu)
+- [x] Nouvelles périodes : trimestre, année, plage personnalisée (sélecteur de dates, persistée)
+- [x] Recherche (insensible aux accents) + tri dans Sites (CRI, récurrence, durée, dernière intervention, nom) et Techniciens (CRI, heures, durée, récurrences, nom)
+- [x] Affichage par tranches de 20 (« Afficher plus ») au lieu de construire toute la liste
+- [x] Lignes cliquables vers les dashboards site / technicien (fait en phase 2)
+- [x] `DashboardErrorView` : message lisible + « Réessayer » (invalide le seul provider en échec)
+- [x] Onglet actif persisté (`DashboardViewModeNotifier`)
+- [x] Export CSV des chiffres affichés (sites ; techniciens en périmètre équipe) — `;`, virgule décimale, UTF-8 avec BOM ; téléchargement web, `Documents/Novadis/Exports` sur mobile. L'ancien export CSV local (`features/export`, non branché) n'est pas repris
+- [x] Seuils responsive : `Responsive.isMobile` / `Responsive.tablet` (fin des 640 / 1000 en dur)
+- [x] Découpage anticipé de la phase 6 : `views/` (Général, Sites, Techniciens) + widgets partagés ; `main_dashboard_page.dart` 1 713 → ~330 lignes
+- [x] Tests : `dashboard_ux_test.dart` (9), `Stats_CompareWithPreviousPeriodOfSameLength`
 
 ### Phase 4 — Alertes
 Branche : `feat/dashboard-alertes`

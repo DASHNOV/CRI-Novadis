@@ -13,6 +13,9 @@ class GlobalStats {
   final int totalRecurrenceRequise;
   final Map<String, int>? repartitionParVille;
 
+  /// Période précédente de même durée (`null` sans période).
+  final PeriodComparison? periodePrecedente;
+
   const GlobalStats({
     required this.totalInterventions,
     required this.totalSignes,
@@ -25,6 +28,7 @@ class GlobalStats {
     this.totalNonResolu = 0,
     this.totalRecurrenceRequise = 0,
     this.repartitionParVille,
+    this.periodePrecedente,
   });
 
   factory GlobalStats.fromJson(Map<String, dynamic> json) {
@@ -42,6 +46,9 @@ class GlobalStats {
       totalNonResolu: json['totalNonResolu'] ?? 0,
       totalRecurrenceRequise: json['totalRecurrenceRequise'] ?? 0,
       repartitionParVille: _parseMap(json['repartitionParVille']),
+      periodePrecedente: json['periodePrecedente'] is Map<String, dynamic>
+          ? PeriodComparison.fromJson(json['periodePrecedente'])
+          : null,
     );
   }
 
@@ -76,5 +83,42 @@ class GlobalStats {
     final m = (dureeMoyenneMinutes! % 60).round();
     if (h > 0) return '${h}h ${m}min';
     return '${m}min';
+  }
+
+  /// Variation en % par rapport à la période précédente, `null` si rien à
+  /// comparer (pas de période, ou 0 sur la période précédente).
+  static double? trend(num? current, num? previous) {
+    if (current == null || previous == null || previous == 0) return null;
+    return (current - previous) / previous * 100;
+  }
+
+  double? get interventionsTrend =>
+      trend(totalInterventions, periodePrecedente?.totalInterventions);
+  double? get resoluTrend => trend(totalResolu, periodePrecedente?.totalResolu);
+  double? get recurrenceTrend =>
+      trend(totalRecurrenceRequise, periodePrecedente?.totalRecurrenceRequise);
+}
+
+/// Chiffres clés d'une période de comparaison.
+class PeriodComparison {
+  final int totalInterventions;
+  final int totalResolu;
+  final double? dureeMoyenneMinutes;
+  final int totalRecurrenceRequise;
+
+  const PeriodComparison({
+    required this.totalInterventions,
+    required this.totalResolu,
+    this.dureeMoyenneMinutes,
+    required this.totalRecurrenceRequise,
+  });
+
+  factory PeriodComparison.fromJson(Map<String, dynamic> json) {
+    return PeriodComparison(
+      totalInterventions: json['totalInterventions'] ?? 0,
+      totalResolu: json['totalResolu'] ?? 0,
+      dureeMoyenneMinutes: (json['dureeMoyenneMinutes'] as num?)?.toDouble(),
+      totalRecurrenceRequise: json['totalRecurrenceRequise'] ?? 0,
+    );
   }
 }

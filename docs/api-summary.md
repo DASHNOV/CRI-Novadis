@@ -135,6 +135,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
   "repartitionParVille": { "Paris": 5, "Lyon": 2 }
 }
 ```
+- `periodePrecedente` : `{ totalInterventions, totalResolu, dureeMoyenneMinutes, totalRecurrenceRequise }` sur la période précédente de même durée (tendances) ; `null` sans période.
 - `totalInterventions` : CRI de la période demandée. `totalCeMois` = même valeur, ancien nom trompeur conservé pour les APK installés (ne plus l'utiliser).
 
 ---
