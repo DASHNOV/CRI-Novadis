@@ -48,6 +48,7 @@ dotnet run                     # écoute http://0.0.0.0:5200
 - Frontend env : `frontend/.env` (API_URL)
 - Backend env : `backend/src/NovadisApi/.env` (ConnectionStrings, Jwt, Email)
 - Config cascade frontend : `--dart-define=API_URL` > `.env` > fallback IP
+- Google Maps (carte des sites) : `--dart-define=GOOGLE_MAPS_API_KEY=…` uniquement (jamais dans `.env`, qui est versionné) ; sans clé → carte Plan IGN. Voir `docs/deployment.md` § Carte des sites
 
 ## Maintenance de la Documentation
 

@@ -10,6 +10,7 @@ import 'package:novadis_cri/models/distribution_stats.dart';
 import 'package:novadis_cri/models/dashboard_alerts.dart';
 import 'package:novadis_cri/models/dashboard_evolution.dart';
 import 'package:novadis_cri/models/recent_intervention.dart';
+import 'package:novadis_cri/models/site_location.dart';
 import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
 
 /// Provider pour le StatsApiService
@@ -180,6 +181,12 @@ class StatsApiService {
       extra: {'staleDays': staleDays},
     );
     return DashboardAlerts.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Tous les sites du référentiel placés sur la carte.
+  Future<SitesMapData> getSitesMap() async {
+    final data = await _getData('/sites/map', const {});
+    return SitesMapData.fromJson(data as Map<String, dynamic>);
   }
 
   /// Statistiques par technicien (global uniquement).

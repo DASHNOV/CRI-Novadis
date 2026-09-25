@@ -13,6 +13,7 @@ import 'package:novadis_cri/models/distribution_stats.dart';
 import 'package:novadis_cri/models/dashboard_alerts.dart';
 import 'package:novadis_cri/models/dashboard_evolution.dart';
 import 'package:novadis_cri/models/recent_intervention.dart';
+import 'package:novadis_cri/models/site_location.dart';
 
 // Toutes les données du dashboard viennent de l'API : aucun calcul local.
 // Un même écran sert deux périmètres (cf. [dashboardIsGlobalProvider]).
@@ -204,6 +205,11 @@ final dashboardAlertsProvider = FutureProvider.autoDispose
           );
     });
 
+/// Sites du référentiel placés sur la carte (indépendant de la période).
+final sitesMapProvider = FutureProvider.autoDispose<SitesMapData>((ref) {
+  return ref.watch(statsApiServiceProvider).getSitesMap();
+});
+
 /// Statistiques par technicien (global uniquement).
 final technicianStatsProvider = FutureProvider.autoDispose
     .family<List<TechnicianDetailedStats>, StatsQuery>((ref, query) {
@@ -235,5 +241,6 @@ extension DashboardRefX on WidgetRef {
     invalidate(distributionStatsProvider);
     invalidate(dashboardAlertsProvider);
     invalidate(techniciansProvider);
+    invalidate(sitesMapProvider);
   }
 }

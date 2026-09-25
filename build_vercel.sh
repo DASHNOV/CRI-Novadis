@@ -33,6 +33,8 @@ echo "Compilation de drift_worker.js..."
 dart compile js -O2 -o web/drift_worker.js web/drift_worker.dart
 
 # 7. Build de l'application Web
+# GOOGLE_MAPS_API_KEY : variable d'environnement du projet Vercel (carte des sites).
+# Absente : le dashboard garde la carte Plan IGN.
 echo "Lancement du build Flutter Web..."
 # --tree-shake-icons : retire les icônes Material/Cupertino non utilisées
 # --no-source-maps   : pas de source maps en prod (évite la fuite de code source)
@@ -42,4 +44,5 @@ flutter build web \
   --tree-shake-icons \
   --no-source-maps \
   --base-href "/" \
-  --dart-define=API_URL=https://api.cri-novadis.tech/api
+  --dart-define=API_URL=https://api.cri-novadis.tech/api \
+  --dart-define=GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}"

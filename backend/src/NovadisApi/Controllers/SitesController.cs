@@ -68,6 +68,37 @@ namespace NovadisApi.Controllers
         }
 
         /// <summary>
+        /// Tous les sites du référentiel placés sur la carte (coordonnées connues),
+        /// et le nombre de sites encore sans coordonnées.
+        /// </summary>
+        [HttpGet("map")]
+        public async Task<ActionResult<ApiResponse<SitesMapDto>>> GetSitesMap(CancellationToken ct = default)
+        {
+            var located = await _context.Sites
+                .Where(s => s.Latitude != null && s.Longitude != null)
+                .OrderBy(s => s.NomDuSite)
+                .Select(s => new SiteLocationDto
+                {
+                    Numero = s.Numero,
+                    NomDuSite = s.NomDuSite,
+                    Adresse = s.Adresse,
+                    Ville = s.Ville,
+                    CodePostal = s.CodePostal,
+                    Latitude = s.Latitude!.Value,
+                    Longitude = s.Longitude!.Value,
+                    GeocodagePrecision = s.GeocodagePrecision,
+                })
+                .ToListAsync(ct);
+            var total = await _context.Sites.CountAsync(ct);
+
+            return Ok(ApiResponse<SitesMapDto>.SuccessResponse(new SitesMapDto
+            {
+                Sites = located,
+                NonLocalises = total - located.Count,
+            }));
+        }
+
+        /// <summary>
         /// Récupère tous les sites (paginé).
         /// </summary>
         [HttpGet]
@@ -237,6 +268,26 @@ namespace NovadisApi.Controllers
             }
             return sb.ToString().Normalize(NormalizationForm.FormC);
         }
+    }
+
+    public class SitesMapDto
+    {
+        public List<SiteLocationDto> Sites { get; set; } = new();
+
+        /// <summary>Sites du référentiel sans coordonnées (non géocodés ou à vérifier).</summary>
+        public int NonLocalises { get; set; }
+    }
+
+    public class SiteLocationDto
+    {
+        public int Numero { get; set; }
+        public string NomDuSite { get; set; } = string.Empty;
+        public string? Adresse { get; set; }
+        public string? Ville { get; set; }
+        public string? CodePostal { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public string? GeocodagePrecision { get; set; }
     }
 
     public class SiteDto

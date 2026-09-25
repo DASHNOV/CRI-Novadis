@@ -83,6 +83,19 @@ précédente et workflow **en échec**. Les 5 dernières images taguées sont co
 - Géocoder les sites existants : `POST /api/sites/geocode` (compte Admin). Lire le bilan `{ traites, localises, aVerifier, sansAdresse }` : il mesure la qualité des adresses du référentiel. Les nouveaux sites et les adresses modifiées sont ensuite géocodés à chaque import.
 - Côté web, les tuiles Plan IGN viennent de `data.geopf.fr` (pas de CSP à adapter aujourd'hui) ; l'attribution « Plan IGN — Géoplateforme » est affichée sur la carte.
 
+#### Fond Google Maps (optionnel — sans clé, la carte reste en Plan IGN)
+
+1. Google Cloud Console : projet avec **compte de facturation** ; activer **Maps JavaScript API** (web) et **Maps SDK for Android**.
+2. Créer une clé et la **restreindre** (elle est lisible dans le navigateur et l'APK) :
+   - web : référents HTTP `https://cri-novadis.tech/*` (+ `http://localhost:*/*` pour le dev) ;
+   - Android : nom de package `com.example.novadis_cri` + empreinte SHA-1 du certificat de signature ;
+   - API autorisées : les deux ci-dessus uniquement.
+3. Web (Vercel) : variable d'environnement `GOOGLE_MAPS_API_KEY` du projet, lue par `build_vercel.sh`.
+4. APK : `flutter build apk --release --dart-define=GOOGLE_MAPS_API_KEY=<clé>` — Gradle reporte la clé dans le manifeste (`com.google.android.geo.API_KEY`).
+5. Dev web : `flutter run -d chrome --dart-define=GOOGLE_MAPS_API_KEY=<clé>`.
+
+Le bouton **Itinéraire** ouvre `https://www.google.com/maps/dir/?api=1&destination=…` (application Google Maps sur mobile, onglet sur le web) : il ne consomme pas la clé et fonctionne aussi avec la carte IGN.
+
 ### Prérequis serveur (une fois)
 
 L'utilisateur SSH du déploiement (`VPS_USER`) doit pouvoir lancer `docker` et **écrire

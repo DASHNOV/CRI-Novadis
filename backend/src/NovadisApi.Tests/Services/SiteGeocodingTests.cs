@@ -139,6 +139,31 @@ public class SiteGeocodingTests
         (await admin.PostAsync("/api/sites/geocode", null)).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task SitesMapEndpoint_ReturnsLocatedSites_AndCountsTheOthers()
+    {
+        using var factory = new NovadisWebApplicationFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NovadisDbContext>();
+            db.Sites.AddRange(
+                new Site { Numero = 10, NomDuSite = "Placé", Ville = "Lyon", Latitude = 45.7, Longitude = 4.8 },
+                new Site { Numero = 11, NomDuSite = "Non placé", Ville = "Lyon" });
+            await db.SaveChangesAsync();
+        }
+
+        var tech = TestAuthHelper.CreateAuthenticatedClient(factory.CreateClient(), Guid.NewGuid(), RoleNames.Technician);
+        var response = await tech.GetAsync("/api/sites/map");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var data = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("data");
+        data.GetProperty("nonLocalises").GetInt32().Should().Be(1);
+        var site = data.GetProperty("sites").EnumerateArray().Single();
+        site.GetProperty("nomDuSite").GetString().Should().Be("Placé");
+        site.GetProperty("latitude").GetDouble().Should().Be(45.7);
+    }
+
     private sealed class RecordingHandler(string response) : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }

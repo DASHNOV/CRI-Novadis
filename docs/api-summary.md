@@ -189,6 +189,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 | POST | `/import` | `SystemAdmin` | Importe les sites depuis le CSV interne, puis géocode les sites nouveaux ou dont l'adresse a changé (échec du géocodage sans effet sur l'import) |
 | POST | `/geocode?force=false` | `SystemAdmin` | Géocode les sites en attente (`GeocodeLe` nul), ou tous avec `force=true` ; jamais les coordonnées manuelles. Géocode aussi les adresses des CRI hors référentiel absentes du cache `AdressesGeocodees`. Réponse `{ traites, localises, aVerifier, sansAdresse, adressesCriTraitees, adressesCriLocalisees }` ; **502** si la Géoplateforme est injoignable |
 | GET | `/summary?siteName=` | ✅ | Résumé d'un site (historique, alertes, recommandations) |
+| GET | `/map` | ✅ | Tous les sites du référentiel ayant des coordonnées : `{ sites: [{ numero, nomDuSite, adresse, ville, codePostal, latitude, longitude, geocodagePrecision }], nonLocalises }` (carte, indépendant de la période) |
 
 **Réponse `/search`** (liste de `SiteDto`)
 ```json
