@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'google_maps_loader_stub.dart'
     if (dart.library.js_interop) 'google_maps_loader_web.dart' as loader;
 
@@ -14,4 +16,7 @@ class GoogleMapsConfig {
 
   /// Charge le SDK JavaScript (web) une seule fois ; immédiat sur mobile.
   static Future<void> ensureLoaded() => loader.ensureGoogleMapsLoaded(apiKey);
+
+  /// `true` si Google a refusé la clé (web) : repli sur le Plan IGN.
+  static ValueListenable<bool> get authFailed => loader.googleMapsAuthFailed;
 }
