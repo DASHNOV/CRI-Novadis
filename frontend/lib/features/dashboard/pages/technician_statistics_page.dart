@@ -270,9 +270,12 @@ class TechnicianStatisticsPage extends ConsumerWidget {
     score += (stats.kpis.firstTimeFixRate / 100) * 25;
     factors++;
 
-    // Ponctualité
-    score += (stats.kpis.punctualityRate / 100) * 33.3;
-    factors++;
+    // Ponctualité (non mesurée : aucune donnée de planning)
+    final punctuality = stats.kpis.punctualityRate;
+    if (punctuality != null) {
+      score += (punctuality / 100) * 33.3;
+      factors++;
+    }
 
     final finalScore = factors > 0
         ? (score * 1.33)
@@ -409,21 +412,23 @@ class _TechnicianProfileCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.email_outlined,
-                        size: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        technician.email,
-                        style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                      ),
-                    ],
-                  ),
+                  if (technician.email != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.email_outlined,
+                          size: 14,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          technician.email!,
+                          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (technician.role != null) ...[
                     const SizedBox(height: 4),
                     Container(

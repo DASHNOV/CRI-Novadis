@@ -13,17 +13,40 @@ enum DashboardPeriod {
 
   const DashboardPeriod(this.label, this.days);
 
-  /// Retourne la date de début pour cette période
-  DateTime get startDate => DateTime.now().subtract(Duration(days: days));
+  /// Début de la période, **inclus** : minuit, `days - 1` jours avant aujourd'hui
+  /// (« 7 derniers jours » = aujourd'hui et les 6 jours précédents).
+  /// Les dates d'intervention sont saisies à la journée (minuit) : une fenêtre
+  /// glissante à l'heure près excluait la première journée ou le 1er du mois.
+  DateTime get startDate {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day - (days - 1));
+  }
 
-  /// Retourne la date de fin (aujourd'hui)
-  DateTime get endDate => DateTime.now();
+  /// Fin de la période, **exclue** : minuit ce soir.
+  DateTime get endDate {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day + 1);
+  }
 
-  /// Retourne la période précédente (pour comparaison)
-  DateTime get previousStartDate =>
-      DateTime.now().subtract(Duration(days: days * 2));
+  /// Période précédente de même durée (pour les tendances) : `[début - days, début[`.
+  DateTime get previousStartDate {
+    final start = startDate;
+    return DateTime(start.year, start.month, start.day - days);
+  }
 
-  DateTime get previousEndDate => DateTime.now().subtract(Duration(days: days));
+  DateTime get previousEndDate => startDate;
+
+  /// `true` si [date] tombe dans la période : `[startDate, endDate[`.
+  bool contains(DateTime date) =>
+      !date.isBefore(startDate) && date.isBefore(endDate);
+
+  /// `true` si [date] tombe dans la période précédente.
+  bool previousContains(DateTime date) =>
+      !date.isBefore(previousStartDate) && date.isBefore(previousEndDate);
+
+  /// Nombre de jours affichés par la courbe d'évolution : au moins 7, une
+  /// courbe d'un seul point (« Jour ») ne montrant rien.
+  int get evolutionDays => days < 7 ? 7 : days;
 
   /// Formate le label de la période
   String get periodLabel {
@@ -45,9 +68,12 @@ class DashboardKpis {
   final double averageDurationMinutes;
   final double completionRate;
   final double? previousCompletionRate;
+
+  /// Interventions de la période terminées : service « Résolu », projet « Terminé ».
   final int realizedInterventions;
+
+  /// Interventions de la période non terminées : `total - réalisées`.
   final int pendingInterventions;
-  final int plannedInterventions;
 
   const DashboardKpis({
     required this.totalInterventions,
@@ -57,7 +83,6 @@ class DashboardKpis {
     this.previousCompletionRate,
     this.realizedInterventions = 0,
     this.pendingInterventions = 0,
-    this.plannedInterventions = 0,
   });
 
   /// Durée moyenne formatée
@@ -177,13 +202,15 @@ class DashboardData {
 class TechnicianModel {
   final String id;
   final String name;
-  final String email;
+
+  /// `null` si inconnue : ne jamais la reconstruire à partir du nom.
+  final String? email;
   final String? role;
 
   const TechnicianModel({
     required this.id,
     required this.name,
-    required this.email,
+    this.email,
     this.role,
   });
 
@@ -213,8 +240,12 @@ class TechnicianKpis {
 
   // Performance temporelle
   final double averageDurationMinutes;
-  final double standardDeviation;
-  final double punctualityRate;
+
+  /// Écart de durée moyenne avec l'équipe, en minutes (`null` : non calculé).
+  final double? standardDeviation;
+
+  /// Ponctualité en % (`null` : aucune donnée de planning pour la mesurer).
+  final double? punctualityRate;
 
   // Qualité
   final double firstTimeFixRate;
@@ -225,8 +256,8 @@ class TechnicianKpis {
     required this.completedInterventions,
     required this.teamComparison,
     required this.averageDurationMinutes,
-    required this.standardDeviation,
-    required this.punctualityRate,
+    this.standardDeviation,
+    this.punctualityRate,
     required this.firstTimeFixRate,
     required this.escalationRate,
   });
@@ -240,8 +271,6 @@ class TechnicianKpis {
       completedInterventions: 0,
       teamComparison: 0,
       averageDurationMinutes: 0,
-      standardDeviation: 0,
-      punctualityRate: 0,
       firstTimeFixRate: 0,
       escalationRate: 0,
     );

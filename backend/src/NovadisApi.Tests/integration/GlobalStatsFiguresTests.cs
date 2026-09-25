@@ -71,7 +71,8 @@ public class GlobalStatsFiguresTests : IClassFixture<NovadisWebApplicationFactor
 
         // ── Vue globale ─────────────────────────────────────────────────────
         var global = await stats.GetGlobalStatsAsync(null);
-        global.TotalCeMois.Should().Be(6);
+        global.TotalInterventions.Should().Be(6);
+        global.TotalCeMois.Should().Be(6);                   // ancien nom, APK installés
         global.TotalSignes.Should().Be(4);
         global.TotalEnAttente.Should().Be(2);
         global.TechniciensActifs.Should().Be(2);
@@ -126,6 +127,55 @@ public class GlobalStatsFiguresTests : IClassFixture<NovadisWebApplicationFactor
             .Which.TotalInterventions.Should().Be(6);
         distribution.CategorieParSite.Select(e => (e.Ligne, e.Colonne, e.Valeur)).Should().BeEquivalentTo(new[]
             { ("SiteA", "Maintenance", 2), ("SiteB", "Installation", 2), ("SiteA", "Depannage", 1) });
+    }
+}
+
+/// <summary>
+/// Filtre de période des statistiques globales : un CRI hors période ne compte nulle part.
+/// Classe à part : base distincte du jeu figé.
+/// </summary>
+public class GlobalStatsPeriodTests : IClassFixture<NovadisWebApplicationFactory>
+{
+    private readonly NovadisWebApplicationFactory _factory;
+
+    public GlobalStatsPeriodTests(NovadisWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task Period_ExcludesOlderInterventions_FromEveryFigure()
+    {
+        var techId = Guid.NewGuid();
+        await TestDataSeeder.SeedUserAsync(_factory, techId, $"period-{techId:N}@novadis.fr");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NovadisDbContext>();
+            void Add(int daysAgo, string status) => db.CRIForms.Add(new CRIForm
+            {
+                Id = Guid.NewGuid(), TechnicianId = techId, InterventionType = "Service", Category = "Maintenance",
+                InterventionDate = DateTime.UtcNow.Date.AddDays(-daysAgo), ClientName = "Client", ClientSite = "SiteP",
+                ResolutionStatus = status, Data = "{}", Status = "Submitted",
+            });
+            Add(0, "resolu");
+            Add(3, "nonResolu");
+            Add(40, "resolu");
+            await db.SaveChangesAsync();
+        }
+
+        using var scope2 = _factory.Services.CreateScope();
+        var stats = scope2.ServiceProvider.GetRequiredService<IGlobalStatsService>();
+
+        var month = await stats.GetGlobalStatsAsync(30);
+        month.TotalInterventions.Should().Be(2);
+        month.TotalResolu.Should().Be(1);
+        month.TotalNonResolu.Should().Be(1);
+
+        var all = await stats.GetGlobalStatsAsync(null);
+        all.TotalInterventions.Should().Be(3);
+
+        var bySite = await stats.GetStatsBySiteAsync(30);
+        bySite.Single().TotalInterventions.Should().Be(2);
     }
 }
 

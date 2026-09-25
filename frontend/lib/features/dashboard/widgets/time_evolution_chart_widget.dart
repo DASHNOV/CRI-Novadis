@@ -15,7 +15,7 @@ class TimeEvolutionChartWidget extends StatefulWidget {
   const TimeEvolutionChartWidget({
     super.key,
     required this.data,
-    this.title = 'Évolution des 6 derniers mois',
+    this.title = "Évolution de l'activité",
     this.subtitle,
     this.showGrid = true,
     this.animate = true,
@@ -121,13 +121,21 @@ class _TimeEvolutionChartWidgetState extends State<TimeEvolutionChartWidget>
   }
 
   LineChartData _buildChartData() {
-    final maxY = widget.data.isEmpty
-        ? 10.0
+    // Plancher à 4 : une période sans intervention donnait maxY = 0 et un
+    // intervalle de grille nul.
+    var maxY = widget.data.isEmpty
+        ? 4.0
         : widget.data
-                  .map((e) => e.count)
-                  .reduce((a, b) => a > b ? a : b)
-                  .toDouble() *
-              1.2;
+              .map((e) => e.count)
+              .reduce((a, b) => a > b ? a : b)
+              .toDouble();
+    if (maxY < 4) maxY = 4;
+    maxY = maxY * 1.2;
+
+    // Une étiquette sur n : 30 jours ne tiennent pas sous l'axe.
+    final double xInterval = widget.data.length > 7
+        ? (widget.data.length / 6).ceilToDouble()
+        : 1;
 
     return LineChartData(
       gridData: FlGridData(
@@ -146,6 +154,7 @@ class _TimeEvolutionChartWidgetState extends State<TimeEvolutionChartWidget>
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
+            interval: xInterval,
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index >= 0 && index < widget.data.length) {

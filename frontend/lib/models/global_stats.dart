@@ -1,6 +1,7 @@
 /// Statistiques globales (admin uniquement)
 class GlobalStats {
-  final int totalCeMois;
+  /// CRI de la période demandée.
+  final int totalInterventions;
   final int totalSignes;
   final int totalEnAttente;
   final int techniciensActifs;
@@ -13,7 +14,7 @@ class GlobalStats {
   final Map<String, int>? repartitionParVille;
 
   const GlobalStats({
-    required this.totalCeMois,
+    required this.totalInterventions,
     required this.totalSignes,
     required this.totalEnAttente,
     required this.techniciensActifs,
@@ -28,7 +29,9 @@ class GlobalStats {
 
   factory GlobalStats.fromJson(Map<String, dynamic> json) {
     return GlobalStats(
-      totalCeMois: json['totalCeMois'] ?? 0,
+      // `totalCeMois` : ancien nom, renvoyé par les API antérieures.
+      totalInterventions:
+          json['totalInterventions'] ?? json['totalCeMois'] ?? 0,
       totalSignes: json['totalSignes'] ?? 0,
       totalEnAttente: json['totalEnAttente'] ?? 0,
       techniciensActifs: json['techniciensActifs'] ?? 0,
@@ -44,7 +47,7 @@ class GlobalStats {
 
   factory GlobalStats.empty() {
     return const GlobalStats(
-      totalCeMois: 0,
+      totalInterventions: 0,
       totalSignes: 0,
       totalEnAttente: 0,
       techniciensActifs: 0,

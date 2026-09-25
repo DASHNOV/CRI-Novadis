@@ -142,8 +142,6 @@ class _MainDashboardPageState extends ConsumerState<MainDashboardPage> {
 
                     const SizedBox(height: AppTheme.space24),
 
-                    const SizedBox(height: AppTheme.space24),
-
                     // Layout based on specific user and view mode
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -233,21 +231,22 @@ class _MainDashboardPageState extends ConsumerState<MainDashboardPage> {
             value: data.kpis.realizedInterventions.toString(),
             icon: Icons.check_circle,
             iconColor: const Color(0xFF10B981),
-            subtitle: '${data.kpis.completionRate.toStringAsFixed(0)}% Taux',
+            subtitle:
+                '${data.kpis.completionRate.toStringAsFixed(0)}% des interventions',
           ),
           KpiCard(
-            title: 'En cours',
+            title: 'Non terminées',
             value: data.kpis.pendingInterventions.toString(),
             icon: Icons.pending_actions,
             iconColor: AppTheme.error,
-            subtitle: 'Action requise',
+            subtitle: 'Non résolues ou en cours',
           ),
           KpiCard(
-            title: 'Prévues',
-            value: data.kpis.plannedInterventions.toString(),
-            icon: Icons.calendar_today,
+            title: 'Sites actifs',
+            value: data.kpis.activeSites.toString(),
+            icon: Icons.location_on_rounded,
             iconColor: AppTheme.primaryLight,
-            subtitle: 'Futures',
+            subtitle: 'Sur la période',
           ),
         ],
       ),
@@ -281,7 +280,8 @@ class _MainDashboardPageState extends ConsumerState<MainDashboardPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Évolution de l\'activité',
+              'Évolution de l\'activité — '
+              '${ref.watch(selectedPeriodProvider).evolutionDays} derniers jours',
               style: TextStyle(
                 color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -674,7 +674,7 @@ class _MainDashboardPageState extends ConsumerState<MainDashboardPage> {
         cards: [
           KpiCard(
             title: 'Interventions',
-            value: stats.totalCeMois.toString(),
+            value: stats.totalInterventions.toString(),
             icon: Icons.assignment,
             iconColor: ChartConfig.kpiColors['interventions']!,
             subtitle: 'Total sur la période',

@@ -4,28 +4,47 @@ import 'package:novadis_cri/data/local/tables/cri_service_table.dart';
 import 'package:novadis_cri/data/local/tables/cri_projet_table.dart';
 import 'package:novadis_cri/features/dashboard/models/dashboard_models.dart';
 
-/// Service de calcul des KPIs du dashboard
+/// Service de calcul des KPIs du dashboard.
+///
+/// Toutes les méthodes filtrent par [DashboardPeriod.contains] : bornes
+/// `[début, fin[` alignées sur minuit. Ne jamais filtrer avec `isAfter(début)`,
+/// qui exclut les interventions datées pile du premier jour (saisies à minuit).
 class KpiCalculatorService {
+  static const _monthNames = [
+    'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
+    'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc',
+  ];
+
+  /// Service terminé : « Résolu » uniquement (même règle que `TotalResolu` côté API).
+  static bool isServiceRealized(CriServiceModel s) =>
+      s.resolutionStatus == ResolutionStatus.resolu;
+
+  /// Projet terminé : « Terminé ».
+  static bool isProjetRealized(CriProjetModel p) =>
+      p.projectStatus == ProjectStatus.termine;
+
   /// Calcule le nombre total d'interventions
   int calculateTotalInterventions(
     List<CriServiceModel> services,
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
+    return services.where((s) => period.contains(s.interventionDate)).length +
+        projets.where((p) => period.contains(p.interventionDate)).length;
+  }
 
-    final serviceCount = services.where((s) {
-      return s.interventionDate.isAfter(startDate) &&
-          s.interventionDate.isBefore(endDate.add(const Duration(days: 1)));
-    }).length;
-
-    final projetCount = projets.where((p) {
-      return p.interventionDate.isAfter(startDate) &&
-          p.interventionDate.isBefore(endDate.add(const Duration(days: 1)));
-    }).length;
-
-    return serviceCount + projetCount;
+  /// Interventions terminées sur la période (voir [isServiceRealized]).
+  int calculateRealizedInterventions(
+    List<CriServiceModel> services,
+    List<CriProjetModel> projets,
+    DashboardPeriod period,
+  ) {
+    return services
+            .where((s) => period.contains(s.interventionDate) && isServiceRealized(s))
+            .length +
+        projets
+            .where((p) => period.contains(p.interventionDate) && isProjetRealized(p))
+            .length;
   }
 
   /// Calcule le nombre de sites actifs (distincts)
@@ -34,141 +53,62 @@ class KpiCalculatorService {
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
-
-    final sites = <String>{};
-
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        sites.add(service.site);
-      }
-    }
-
-    for (final projet in projets) {
-      if (projet.interventionDate.isAfter(startDate) &&
-          projet.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        sites.add(projet.site);
-      }
-    }
-
-    return sites.length;
+    return {
+      ...services
+          .where((s) => period.contains(s.interventionDate))
+          .map((s) => s.site),
+      ...projets
+          .where((p) => period.contains(p.interventionDate))
+          .map((p) => p.site),
+    }.where((site) => site.isNotEmpty).length;
   }
 
-  /// Calcule la durée moyenne des interventions en minutes
+  /// Durée moyenne en minutes. Les durées nulles sont exclues (non saisies),
+  /// comme côté API.
   double calculateAverageDuration(
     List<CriServiceModel> services,
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
-
-    final durations = <int>[];
-
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        durations.add(service.interventionDurationMinutes);
-      }
-    }
-
-    for (final projet in projets) {
-      if (projet.interventionDate.isAfter(startDate) &&
-          projet.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        durations.add(projet.durationMinutes);
-      }
-    }
+    final durations = [
+      ...services
+          .where((s) => period.contains(s.interventionDate))
+          .map((s) => s.interventionDurationMinutes),
+      ...projets
+          .where((p) => period.contains(p.interventionDate))
+          .map((p) => p.durationMinutes),
+    ].where((d) => d > 0).toList();
 
     if (durations.isEmpty) return 0;
     return durations.reduce((a, b) => a + b) / durations.length;
   }
 
-  /// Calcule le taux de complétion
+  /// Taux de réalisation en % : réalisées / total sur la période.
   double calculateCompletionRate(
     List<CriServiceModel> services,
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
-
-    int total = 0;
-    int completed = 0;
-
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        total++;
-        if (service.resolutionStatus == ResolutionStatus.resolu ||
-            service.resolutionStatus == ResolutionStatus.partiellementResolu) {
-          completed++;
-        }
-      }
-    }
-
-    for (final projet in projets) {
-      if (projet.interventionDate.isAfter(startDate) &&
-          projet.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        total++;
-        if (projet.projectStatus == ProjectStatus.termine) {
-          completed++;
-        }
-      }
-    }
-
+    final total = calculateTotalInterventions(services, projets, period);
     if (total == 0) return 0;
-    return (completed / total) * 100;
+    return calculateRealizedInterventions(services, projets, period) / total * 100;
   }
 
-  /// Calcule le taux de complétion pour la période précédente
+  /// Taux de réalisation de la période précédente de même durée.
   double calculatePreviousCompletionRate(
     List<CriServiceModel> services,
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.previousStartDate;
-    final endDate = period.previousEndDate;
-
-    int total = 0;
-    int completed = 0;
-
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(endDate)) {
-        total++;
-        if (service.resolutionStatus == ResolutionStatus.resolu ||
-            service.resolutionStatus == ResolutionStatus.partiellementResolu) {
-          completed++;
-        }
-      }
-    }
-
-    for (final projet in projets) {
-      if (projet.interventionDate.isAfter(startDate) &&
-          projet.interventionDate.isBefore(endDate)) {
-        total++;
-        if (projet.projectStatus == ProjectStatus.termine) {
-          completed++;
-        }
-      }
-    }
-
+    final prevServices =
+        services.where((s) => period.previousContains(s.interventionDate));
+    final prevProjets =
+        projets.where((p) => period.previousContains(p.interventionDate));
+    final total = prevServices.length + prevProjets.length;
     if (total == 0) return 0;
-    return (completed / total) * 100;
+    final realized = prevServices.where(isServiceRealized).length +
+        prevProjets.where(isProjetRealized).length;
+    return realized / total * 100;
   }
 
   /// Calcule la tendance entre deux valeurs
@@ -180,54 +120,31 @@ class KpiCalculatorService {
     return TrendDirection.neutral;
   }
 
-  /// Calcule les données d'évolution temporelle (6 derniers mois)
+  /// Évolution jour par jour sur [DashboardPeriod.evolutionDays] jours
+  /// (au moins 7), jours sans intervention compris.
   List<TimeEvolutionData> calculateTimeEvolution(
     List<CriServiceModel> services,
     List<CriProjetModel> projets,
+    DashboardPeriod period,
   ) {
-    final now = DateTime.now();
-    final months = <TimeEvolutionData>[];
-    final monthNames = [
-      'Jan',
-      'Fév',
-      'Mar',
-      'Avr',
-      'Mai',
-      'Juin',
-      'Juil',
-      'Août',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Déc',
+    final end = period.endDate;
+    final days = period.evolutionDays;
+    final dates = [
+      ...services.map((s) => s.interventionDate),
+      ...projets.map((p) => p.interventionDate),
     ];
 
-    for (int i = 5; i >= 0; i--) {
-      final monthDate = DateTime(now.year, now.month - i, 1);
-      final nextMonth = DateTime(now.year, now.month - i + 1, 1);
-
-      int count = 0;
-
-      count += services.where((s) {
-        return s.interventionDate.isAfter(monthDate) &&
-            s.interventionDate.isBefore(nextMonth);
-      }).length;
-
-      count += projets.where((p) {
-        return p.interventionDate.isAfter(monthDate) &&
-            p.interventionDate.isBefore(nextMonth);
-      }).length;
-
-      months.add(
-        TimeEvolutionData(
-          date: monthDate,
-          count: count,
-          label: monthNames[monthDate.month - 1],
-        ),
+    return List.generate(days, (i) {
+      final day = DateTime(end.year, end.month, end.day - days + i);
+      final next = DateTime(day.year, day.month, day.day + 1);
+      final count =
+          dates.where((d) => !d.isBefore(day) && d.isBefore(next)).length;
+      return TimeEvolutionData(
+        date: day,
+        count: count,
+        label: '${day.day} ${_monthNames[day.month - 1]}',
       );
-    }
-
-    return months;
+    });
   }
 
   /// Calcule la distribution par type d'intervention (Top 5)
@@ -236,30 +153,7 @@ class KpiCalculatorService {
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
-    final typeCounts = <String, int>{};
-
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        final type = service.requestType.label;
-        typeCounts[type] = (typeCounts[type] ?? 0) + 1;
-      }
-    }
-
-    for (final projet in projets) {
-      if (projet.interventionDate.isAfter(startDate) &&
-          projet.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        final type = projet.interventionType.label;
-        typeCounts[type] = (typeCounts[type] ?? 0) + 1;
-      }
-    }
-
+    final typeCounts = calculateCategoryCounts(services, projets, period);
     final total = typeCounts.values.fold<int>(0, (a, b) => a + b);
     if (total == 0) return [];
 
@@ -275,50 +169,42 @@ class KpiCalculatorService {
     }).toList();
   }
 
-  /// Calcule le top 5 des sites les plus visités
+  /// Nombre d'interventions par type de demande (service) ou d'intervention (projet).
+  Map<String, int> calculateCategoryCounts(
+    List<CriServiceModel> services,
+    List<CriProjetModel> projets,
+    DashboardPeriod period,
+  ) {
+    final counts = <String, int>{};
+    for (final s in services.where((s) => period.contains(s.interventionDate))) {
+      counts.update(s.requestType.label, (c) => c + 1, ifAbsent: () => 1);
+    }
+    for (final p in projets.where((p) => period.contains(p.interventionDate))) {
+      counts.update(p.interventionType.label, (c) => c + 1, ifAbsent: () => 1);
+    }
+    return counts;
+  }
+
+  /// Calcule le top 20 des sites les plus visités
   List<TopSiteData> calculateTopSites(
     List<CriServiceModel> services,
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
     final siteData = <String, _SiteInfo>{};
 
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        final key = service.site;
-        if (siteData.containsKey(key)) {
-          siteData[key]!.count++;
-        } else {
-          siteData[key] = _SiteInfo(
-            siteName: service.site,
-            clientName: service.clientName,
-            count: 1,
-          );
-        }
-      }
+    void add(String site, String clientName) {
+      if (site.isEmpty) return;
+      siteData
+          .putIfAbsent(site, () => _SiteInfo(siteName: site, clientName: clientName))
+          .count++;
     }
 
-    for (final projet in projets) {
-      if (projet.interventionDate.isAfter(startDate) &&
-          projet.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        final key = projet.site;
-        if (siteData.containsKey(key)) {
-          siteData[key]!.count++;
-        } else {
-          siteData[key] = _SiteInfo(
-            siteName: projet.site,
-            clientName: projet.clientName,
-            count: 1,
-          );
-        }
-      }
+    for (final s in services.where((s) => period.contains(s.interventionDate))) {
+      add(s.site, s.clientName);
+    }
+    for (final p in projets.where((p) => period.contains(p.interventionDate))) {
+      add(p.site, p.clientName);
     }
 
     final sorted = siteData.entries.toList()
@@ -340,44 +226,20 @@ class KpiCalculatorService {
     List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
     final techData = <String, _TechWorkInfo>{};
 
-    void processIntervention(
-      String name,
-      DateTime date,
-      int duration,
-      bool isCompleted,
-    ) {
-      if (date.isAfter(startDate) &&
-          date.isBefore(endDate.add(const Duration(days: 1)))) {
-        if (!techData.containsKey(name)) {
-          techData[name] = _TechWorkInfo(name: name);
-        }
-        final info = techData[name]!;
-        info.count++;
-        info.totalMinutes += duration;
-        if (isCompleted) info.completedCount++;
-      }
+    void add(String name, int duration, bool isCompleted) {
+      final info = techData.putIfAbsent(name, () => _TechWorkInfo(name: name));
+      info.count++;
+      if (duration > 0) info.totalMinutes += duration;
+      if (isCompleted) info.completedCount++;
     }
 
-    for (final s in services) {
-      processIntervention(
-        s.technicianName,
-        s.interventionDate,
-        s.interventionDurationMinutes,
-        s.resolutionStatus == ResolutionStatus.resolu,
-      );
+    for (final s in services.where((s) => period.contains(s.interventionDate))) {
+      add(s.technicianName, s.interventionDurationMinutes, isServiceRealized(s));
     }
-
-    for (final p in projets) {
-      processIntervention(
-        p.technicianName,
-        p.interventionDate,
-        p.durationMinutes,
-        p.projectStatus == ProjectStatus.termine,
-      );
+    for (final p in projets.where((p) => period.contains(p.interventionDate))) {
+      add(p.technicianName, p.durationMinutes, isProjetRealized(p));
     }
 
     return techData.entries.map((entry) {
@@ -393,23 +255,18 @@ class KpiCalculatorService {
       ..sort((a, b) => b.interventionCount.compareTo(a.interventionCount));
   }
 
-  /// Calcule la moyenne de l'équipe pour un métrique donné
+  /// Nombre moyen d'interventions par technicien sur la période.
   double calculateTeamAverage(
     List<CriServiceModel> services,
+    List<CriProjetModel> projets,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
     final technicianCounts = <String, int>{};
-
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        final tech = service.technicianName;
-        technicianCounts[tech] = (technicianCounts[tech] ?? 0) + 1;
-      }
+    for (final s in services.where((s) => period.contains(s.interventionDate))) {
+      technicianCounts.update(s.technicianName, (c) => c + 1, ifAbsent: () => 1);
+    }
+    for (final p in projets.where((p) => period.contains(p.interventionDate))) {
+      technicianCounts.update(p.technicianName, (c) => c + 1, ifAbsent: () => 1);
     }
 
     if (technicianCounts.isEmpty) return 0;
@@ -423,28 +280,14 @@ class KpiCalculatorService {
     String? technicianName,
     DashboardPeriod period,
   ) {
-    final startDate = period.startDate;
-    final endDate = period.endDate;
-    int total = 0;
-    int firstTimeFix = 0;
-
-    for (final service in services) {
-      if (service.interventionDate.isAfter(startDate) &&
-          service.interventionDate.isBefore(
-            endDate.add(const Duration(days: 1)),
-          )) {
-        if (technicianName == null ||
-            service.technicianName == technicianName) {
-          total++;
-          if (service.resolutionStatus == ResolutionStatus.resolu &&
-              !service.additionalInterventionRequired) {
-            firstTimeFix++;
-          }
-        }
-      }
-    }
-
+    final scoped = services.where((s) =>
+        period.contains(s.interventionDate) &&
+        (technicianName == null || s.technicianName == technicianName));
+    final total = scoped.length;
     if (total == 0) return 0;
+    final firstTimeFix = scoped
+        .where((s) => isServiceRealized(s) && !s.additionalInterventionRequired)
+        .length;
     return (firstTimeFix / total) * 100;
   }
 
@@ -470,40 +313,45 @@ class KpiCalculatorService {
     }).toList();
   }
 
-  /// Calcule la charge de travail hebdomadaire
+  /// Charge hebdomadaire d'un technicien sur les 8 dernières semaines
+  /// (lundi 00:00 → lundi suivant), services et projets.
   List<WorkloadData> calculateWorkloadCurve(
     List<CriServiceModel> services,
+    List<CriProjetModel> projets,
     String technicianName,
-    DashboardPeriod period,
   ) {
     final now = DateTime.now();
-    final weeks = <WorkloadData>[];
+    final currentMonday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
 
-    // 8 dernières semaines
-    for (int i = 7; i >= 0; i--) {
-      final weekStart = now.subtract(Duration(days: now.weekday - 1 + (i * 7)));
-      final weekEnd = weekStart.add(const Duration(days: 7));
+    final items = [
+      for (final s in services.where((s) => s.technicianName == technicianName))
+        (date: s.interventionDate, minutes: s.interventionDurationMinutes),
+      for (final p in projets.where((p) => p.technicianName == technicianName))
+        (date: p.interventionDate, minutes: p.durationMinutes),
+    ];
 
-      double totalMinutes = 0;
-
-      for (final service in services) {
-        if (service.technicianName == technicianName &&
-            service.interventionDate.isAfter(weekStart) &&
-            service.interventionDate.isBefore(weekEnd)) {
-          totalMinutes += service.interventionDurationMinutes;
-        }
-      }
-
-      weeks.add(
-        WorkloadData(
-          weekStart: weekStart,
-          totalHours: totalMinutes / 60,
-          weekLabel: 'S${8 - i}',
-        ),
+    return List.generate(8, (index) {
+      final i = 7 - index;
+      final weekStart = DateTime(
+        currentMonday.year,
+        currentMonday.month,
+        currentMonday.day - i * 7,
       );
-    }
+      final weekEnd = DateTime(weekStart.year, weekStart.month, weekStart.day + 7);
+      final inWeek = items
+          .where((e) => !e.date.isBefore(weekStart) && e.date.isBefore(weekEnd))
+          .toList();
+      final totalMinutes = inWeek
+          .map((e) => e.minutes > 0 ? e.minutes : 0)
+          .fold<int>(0, (a, b) => a + b);
 
-    return weeks;
+      return WorkloadData(
+        weekStart: weekStart,
+        totalHours: totalMinutes / 60,
+        interventionCount: inWeek.length,
+        weekLabel: '${weekStart.day}/${weekStart.month}',
+      );
+    });
   }
 }
 
@@ -511,13 +359,9 @@ class KpiCalculatorService {
 class _SiteInfo {
   final String siteName;
   final String clientName;
-  int count;
+  int count = 0;
 
-  _SiteInfo({
-    required this.siteName,
-    required this.clientName,
-    required this.count,
-  });
+  _SiteInfo({required this.siteName, required this.clientName});
 }
 
 /// Classe helper pour les infos de technicien

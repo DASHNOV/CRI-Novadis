@@ -5,7 +5,6 @@ import 'package:novadis_cri/features/dashboard/models/dashboard_models.dart';
 import 'package:novadis_cri/features/dashboard/services/kpi_calculator_service.dart';
 import 'package:novadis_cri/data/local/app_database.dart';
 import 'package:novadis_cri/data/local/tables/cri_service_table.dart';
-import 'package:novadis_cri/data/local/tables/cri_projet_table.dart';
 import 'package:novadis_cri/data/repositories/cri_remote_repository.dart';
 
 /// Repository pour les données du Dashboard
@@ -26,12 +25,19 @@ class DashboardRepository {
     final services = await _getAllServices();
     final projets = await _getAllProjets();
 
+    final total = _kpiCalculator.calculateTotalInterventions(
+      services,
+      projets,
+      period,
+    );
+    final realized = _kpiCalculator.calculateRealizedInterventions(
+      services,
+      projets,
+      period,
+    );
+
     final kpis = DashboardKpis(
-      totalInterventions: _kpiCalculator.calculateTotalInterventions(
-        services,
-        projets,
-        period,
-      ),
+      totalInterventions: total,
       activeSites: _kpiCalculator.calculateActiveSites(
         services,
         projets,
@@ -52,16 +58,8 @@ class DashboardRepository {
         projets,
         period,
       ),
-      realizedInterventions:
-          services
-              .where((s) => s.resolutionStatus == ResolutionStatus.resolu)
-              .length +
-          projets.where((p) => p.projectStatus == ProjectStatus.termine).length,
-      pendingInterventions:
-          services
-              .where((s) => s.resolutionStatus == ResolutionStatus.nonResolu)
-              .length +
-          projets.where((p) => p.projectStatus == ProjectStatus.enCours).length,
+      realizedInterventions: realized,
+      pendingInterventions: total - realized,
     );
 
     // Récupérer les interventions récentes
@@ -93,7 +91,11 @@ class DashboardRepository {
 
     return DashboardData(
       kpis: kpis,
-      timeEvolution: _kpiCalculator.calculateTimeEvolution(services, projets),
+      timeEvolution: _kpiCalculator.calculateTimeEvolution(
+        services,
+        projets,
+        period,
+      ),
       typeDistribution: _kpiCalculator.calculateTypeDistribution(
         services,
         projets,
@@ -130,25 +132,27 @@ class DashboardRepository {
       techProjets,
       period,
     );
-    final teamAverage = _kpiCalculator.calculateTeamAverage(services, period);
+    final teamAverage = _kpiCalculator.calculateTeamAverage(
+      services,
+      projets,
+      period,
+    );
 
     final kpis = TechnicianKpis(
       assignedInterventions: assignedCount,
-      completedInterventions:
-          techServices
-              .where((s) => s.resolutionStatus == ResolutionStatus.resolu)
-              .length +
-          techProjets
-              .where((p) => p.projectStatus == ProjectStatus.termine)
-              .length,
+      completedInterventions: _kpiCalculator.calculateRealizedInterventions(
+        techServices,
+        techProjets,
+        period,
+      ),
       teamComparison: teamAverage > 0 ? (assignedCount / teamAverage) * 100 : 0,
       averageDurationMinutes: _kpiCalculator.calculateAverageDuration(
         techServices,
         techProjets,
         period,
       ),
-      standardDeviation: 0,
-      punctualityRate: 90,
+      // Écart-type et ponctualité : aucune donnée pour les mesurer (pas de
+      // planning). Laissés à null plutôt qu'inventés.
       firstTimeFixRate: _kpiCalculator.calculateFirstTimeFixRate(
         services,
         technicianName,
@@ -159,11 +163,13 @@ class DashboardRepository {
 
     return TechnicianStatsData(
       kpis: kpis,
-      skillsRadar: _kpiCalculator.normalizeRadarData({}), // À affiner
+      skillsRadar: _kpiCalculator.normalizeRadarData(
+        _kpiCalculator.calculateCategoryCounts(techServices, techProjets, period),
+      ),
       workloadCurve: _kpiCalculator.calculateWorkloadCurve(
         services,
+        projets,
         technicianName,
-        period,
       ),
       topSites: _kpiCalculator.calculateTopSites(
         techServices,
@@ -191,7 +197,6 @@ class DashboardRepository {
           (name) => TechnicianModel(
             id: name.toLowerCase().replaceAll(' ', '_'),
             name: name,
-            email: '${name.toLowerCase().replaceAll(' ', '.')}@novadis.fr',
           ),
         )
         .toList();
@@ -251,7 +256,7 @@ class DashboardRepository {
     DashboardPeriod period,
   ) {
     final filtered = services
-        .where((s) => s.interventionDate.isAfter(period.startDate))
+        .where((s) => period.contains(s.interventionDate))
         .toList();
     if (filtered.isEmpty) return 0;
     final escalated = filtered

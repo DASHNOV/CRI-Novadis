@@ -18,6 +18,16 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-09-25] Dashboard : KPI hors période, bornes exclusives, courbe technicien toujours à 0
+- **Symptôme** : vue technicien du dashboard — « Réalisées » pouvait dépasser « Interventions » ; « Prévues » toujours à 0 ; courbe d'évolution figée sur 6 mois quel que soit le filtre ; interventions du 1er du mois absentes de la courbe ; page technicien (admin) : courbe hebdomadaire toujours plate, email inventé (`prenom.nom@novadis.fr`), ponctualité fixe à 90 %.
+- **Cause** :
+  - `DashboardRepository` comptait réalisées / en cours sur **tout l'historique**, le total sur la période.
+  - Filtres `isAfter(début)` alors que les dates d'intervention sont saisies à minuit → le premier jour exclu ; fenêtres glissantes à l'heure près (`now - n jours`).
+  - `plannedInterventions` et `WorkloadData.interventionCount` jamais renseignés (valeur par défaut 0), alors que le graphique trace `interventionCount`.
+  - Valeurs de maquette restées en dur (`punctualityRate: 90`, email reconstruit à partir du nom).
+- **Correctif** : `DashboardPeriod.contains()` / `previousContains()` (`[minuit J-(n-1), minuit J+1[`), seul filtre utilisé par `KpiCalculatorService` ; réalisées / non terminées / taux dérivés du même total ; carte « Prévues » → « Sites actifs » ; courbe jour par jour sur la période (7 jours minimum) ; charge hebdomadaire services + projets, semaines alignées sur le lundi 00:00 ; valeurs non mesurables à `null` (affichées « — »). API : `TotalInterventions` (nom juste de `TotalCeMois`, conservé). Tests : `kpi_calculator_service_test.dart`, `GlobalStatsPeriodTests`.
+- **Prévention** : filtrer une période uniquement via `DashboardPeriod.contains()` — jamais `isAfter(start)`. Un champ de modèle avec valeur par défaut (`= 0`) doit être renseigné ou supprimé, pas laissé à sa valeur par défaut. Jamais de valeur inventée dans un KPI : `null` et « — ».
+
 ## [2026-09-24] Déploiement .NET 10 annulé par le retour arrière — modèle EF différent en Release
 - **Symptôme** : premier déploiement de l'API EF Core 10 (étape 4.3). Le conteneur ne démarre pas (502 Cloudflare pendant 150 s) ; `deploy-remote.sh` revient automatiquement sur l'image précédente — production rétablie sans intervention. Localement, la même version démarrait et passait `verify-phase1.py` (43/43).
 - **Cause** : `AuthAttempt.PlainCode` (OTP en clair, pour un endpoint de dev) était déclarée sous `#if DEBUG`. Le snapshot des migrations, généré en Debug, la contient ; le build **Release** de production ne l'a pas. EF Core 8 ignorait l'écart ; **EF Core 9+ lève `PendingModelChangesWarning` en erreur dans `Migrate()`** → exception au démarrage. Toutes les vérifications locales tournaient en Debug (`dotnet test`, `dotnet ef migrations has-pending-model-changes`, API lancée depuis `bin/Debug`) : l'écart était invisible. Reproduit avec l'image Docker (Release) en `ASPNETCORE_ENVIRONMENT=Production` sur une base migrée par la version précédente.
