@@ -3,24 +3,6 @@ import '../models/exported_document_model.dart';
 import 'base_service_interfaces.dart';
 import 'pdf_generator_web.dart';
 
-class WebDashboardCsvService implements BaseDashboardCsvService {
-  WebDashboardCsvService(AppDatabase db);
-  @override
-  Future<dynamic> exportInterventions({required DateTime startDate, required DateTime endDate, String? interventionType, String? status}) async => throw UnimplementedError();
-  @override
-  Future<dynamic> exportKPISynthesis({required DateTime startDate, required DateTime endDate}) async => throw UnimplementedError();
-  @override
-  Future<dynamic> exportTopSites({required DateTime startDate, required DateTime endDate, int limit = 10}) async => throw UnimplementedError();
-  @override
-  Future<List<dynamic>> exportAll({required DateTime startDate, required DateTime endDate}) async => throw UnimplementedError();
-}
-
-class WebTechnicianStatsCsvService implements BaseTechnicianStatsCsvService {
-  WebTechnicianStatsCsvService(AppDatabase db);
-  @override
-  Future<dynamic> exportTechnicianStats({required String technicianName, required DateTime startDate, required DateTime endDate}) async => throw UnimplementedError();
-}
-
 class WebFileManagementService implements BaseFileManagementService {
   WebFileManagementService(AppDatabase db);
   @override
@@ -42,6 +24,4 @@ class WebFileManagementService implements BaseFileManagementService {
 }
 
 BasePdfGeneratorService createPdfService(AppDatabase db) => PdfGeneratorService(db);
-BaseDashboardCsvService createDashboardCsvService(AppDatabase db) => WebDashboardCsvService(db);
-BaseTechnicianStatsCsvService createTechnicianStatsCsvService(AppDatabase db) => WebTechnicianStatsCsvService(db);
 BaseFileManagementService createFileManagementService(AppDatabase db) => WebFileManagementService(db);
