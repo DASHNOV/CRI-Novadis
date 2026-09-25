@@ -70,7 +70,7 @@ public class GlobalStatsFiguresTests : IClassFixture<NovadisWebApplicationFactor
         var stats = scope.ServiceProvider.GetRequiredService<IGlobalStatsService>();
 
         // ── Vue globale ─────────────────────────────────────────────────────
-        var global = await stats.GetGlobalStatsAsync(null);
+        var global = await stats.GetGlobalStatsAsync(StatsFilter.All);
         global.TotalInterventions.Should().Be(6);
         global.TotalCeMois.Should().Be(6);                   // ancien nom, APK installés
         global.TotalSignes.Should().Be(4);
@@ -85,7 +85,7 @@ public class GlobalStatsFiguresTests : IClassFixture<NovadisWebApplicationFactor
         global.RepartitionParVille.Should().BeEquivalentTo(new Dictionary<string, int> { ["Lyon"] = 3, ["Paris"] = 2 });
 
         // ── Par site ────────────────────────────────────────────────────────
-        var bySite = await stats.GetStatsBySiteAsync(null);
+        var bySite = await stats.GetStatsBySiteAsync(StatsFilter.All);
         bySite.Select(s => s.SiteNom).Should().Equal("SiteA", "SiteB");   // site vide exclu, tri décroissant
         var siteA = bySite[0];
         siteA.TotalInterventions.Should().Be(3);
@@ -103,7 +103,7 @@ public class GlobalStatsFiguresTests : IClassFixture<NovadisWebApplicationFactor
         siteB.TotalProjets.Should().Be(2);
 
         // ── Par technicien ──────────────────────────────────────────────────
-        var byTech = (await stats.GetStatsByTechnicianAsync(null)).ToDictionary(t => t.Id);
+        var byTech = (await stats.GetStatsByTechnicianAsync(StatsFilter.All)).ToDictionary(t => t.Id);
         var t1 = byTech[_t1];
         t1.TotalInterventions.Should().Be(3);
         t1.DureeMoyenneMinutes.Should().Be(90);
@@ -120,7 +120,7 @@ public class GlobalStatsFiguresTests : IClassFixture<NovadisWebApplicationFactor
         t2.SitesDistincts.Should().Be(2);                    // CRI sans site non compté
 
         // ── Répartitions ────────────────────────────────────────────────────
-        var distribution = await stats.GetDistributionStatsAsync(null);
+        var distribution = await stats.GetDistributionStatsAsync(StatsFilter.All);
         distribution.RepartitionParCategorie.Should().BeEquivalentTo(new Dictionary<string, int>
             { ["Maintenance"] = 3, ["Installation"] = 2, ["Depannage"] = 1 });
         distribution.EvolutionMensuelle.Should().ContainSingle()
@@ -166,15 +166,15 @@ public class GlobalStatsPeriodTests : IClassFixture<NovadisWebApplicationFactory
         using var scope2 = _factory.Services.CreateScope();
         var stats = scope2.ServiceProvider.GetRequiredService<IGlobalStatsService>();
 
-        var month = await stats.GetGlobalStatsAsync(30);
+        var month = await stats.GetGlobalStatsAsync(StatsFilter.LastDays(30));
         month.TotalInterventions.Should().Be(2);
         month.TotalResolu.Should().Be(1);
         month.TotalNonResolu.Should().Be(1);
 
-        var all = await stats.GetGlobalStatsAsync(null);
+        var all = await stats.GetGlobalStatsAsync(StatsFilter.All);
         all.TotalInterventions.Should().Be(3);
 
-        var bySite = await stats.GetStatsBySiteAsync(30);
+        var bySite = await stats.GetStatsBySiteAsync(StatsFilter.LastDays(30));
         bySite.Single().TotalInterventions.Should().Be(2);
     }
 }

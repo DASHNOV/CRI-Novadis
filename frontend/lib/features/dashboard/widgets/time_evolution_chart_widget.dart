@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
-import 'package:novadis_cri/features/dashboard/models/dashboard_models.dart';
+import 'package:novadis_cri/models/dashboard_evolution.dart';
 import 'package:novadis_cri/features/dashboard/config/chart_config.dart';
 
 /// Widget pour le graphique d'évolution temporelle
 class TimeEvolutionChartWidget extends StatefulWidget {
-  final List<TimeEvolutionData> data;
+  final List<EvolutionPoint> data;
   final String title;
   final String? subtitle;
   final bool showGrid;
@@ -126,7 +126,7 @@ class _TimeEvolutionChartWidgetState extends State<TimeEvolutionChartWidget>
     var maxY = widget.data.isEmpty
         ? 4.0
         : widget.data
-              .map((e) => e.count)
+              .map((e) => e.total)
               .reduce((a, b) => a > b ? a : b)
               .toDouble();
     if (maxY < 4) maxY = 4;
@@ -212,7 +212,7 @@ class _TimeEvolutionChartWidgetState extends State<TimeEvolutionChartWidget>
             return touchedSpots.map((spot) {
               final data = widget.data[spot.x.toInt()];
               return LineTooltipItem(
-                '${data.label}\n${data.count} interventions',
+                '${data.label}\n${data.total} interventions',
                 const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -236,7 +236,7 @@ class _TimeEvolutionChartWidgetState extends State<TimeEvolutionChartWidget>
       lineBarsData: [
         LineChartBarData(
           spots: List.generate(widget.data.length, (index) {
-            final animatedValue = widget.data[index].count * _animation.value;
+            final animatedValue = widget.data[index].total * _animation.value;
             return FlSpot(index.toDouble(), animatedValue);
           }),
           isCurved: true,

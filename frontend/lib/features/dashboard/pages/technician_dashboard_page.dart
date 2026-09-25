@@ -3,54 +3,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:novadis_cri/models/user_role.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
+import 'package:novadis_cri/core/theme/theme_provider.dart';
+import 'package:novadis_cri/core/utils/duration_format.dart';
+import 'package:novadis_cri/core/widgets/content_container.dart';
+import 'package:novadis_cri/features/dashboard/config/chart_config.dart';
 import 'package:novadis_cri/features/dashboard/models/dashboard_models.dart';
+import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
 import 'package:novadis_cri/features/dashboard/providers/dashboard_providers.dart';
 import 'package:novadis_cri/features/dashboard/widgets/dashboard_common_widgets.dart';
+import 'package:novadis_cri/features/dashboard/widgets/intervention_list_item.dart';
+import 'package:novadis_cri/features/dashboard/widgets/kpi_card_widget.dart';
+import 'package:novadis_cri/features/dashboard/widgets/time_evolution_chart_widget.dart';
 
-import 'package:novadis_cri/features/dashboard/widgets/intervention_trend_chart_widget.dart';
-import 'package:novadis_cri/features/dashboard/config/chart_config.dart';
-import 'package:novadis_cri/core/theme/theme_provider.dart';
-
-/// Dashboard spécifique à un Technicien
-class TechnicianDashboardPage extends ConsumerStatefulWidget {
-  final String technicianId; // Using name as ID for now based on previous code
+/// Dashboard d'un technicien (périmètre équipe) : identifié par son ID utilisateur.
+class TechnicianDashboardPage extends ConsumerWidget {
+  final String technicianId;
 
   const TechnicianDashboardPage({super.key, required this.technicianId});
 
   @override
-  ConsumerState<TechnicianDashboardPage> createState() =>
-      _TechnicianDashboardPageState();
-}
-
-class _TechnicianDashboardPageState
-    extends ConsumerState<TechnicianDashboardPage> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadTechnician();
-    });
-  }
-
-  Future<void> _loadTechnician() async {
-    final technicians = await ref.read(techniciansListProvider.future);
-    try {
-      final tech = technicians.firstWhere(
-        (t) => t.id == widget.technicianId,
-        orElse: () => technicians.first,
-      );
-      ref.read(selectedTechnicianProvider.notifier).state = tech;
-    } catch (e) {
-      // Handle error
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(themeAnimationProvider);
-    final techStatsAsync = ref.watch(technicianStatsProvider);
-    final selectedTech = ref.watch(selectedTechnicianProvider);
     final selectedPeriod = ref.watch(selectedPeriodProvider);
+    final query = ref.watch(dashboardQueryProvider).copyWith(
+          technicianId: technicianId,
+        );
+    final technician = ref
+        .watch(techniciansProvider)
+        .valueOrNull
+        ?.where((t) => t.id == technicianId)
+        .firstOrNull;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -64,207 +46,168 @@ class _TechnicianDashboardPageState
           onPressed: () => context.pop(),
         ),
       ),
-      body: selectedTech == null
-          ? const Center(child: CircularProgressIndicator())
-          : CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(AppTheme.space16),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      _TechnicianHeader(technician: selectedTech),
-                      const SizedBox(height: AppTheme.space16),
-
-                      // Filtre de période
-                      PeriodFilterWidget(
-                        selectedPeriod: selectedPeriod,
-                        onPeriodChanged: (period) {
-                          ref
-                              .read(selectedPeriodProvider.notifier)
-                              .setPeriod(period);
-                        },
-                      ),
-                      const SizedBox(height: AppTheme.space24),
-
-                      techStatsAsync.when(
-                        data: (stats) {
-                          if (stats == null) {
-                            return const Center(child: Text("Pas de données"));
-                          }
-                          return Column(
-                            children: [
-                              // 1. Informations sur les sites affectés & Interventions réalisées
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _SimpleKpiCard(
-                                      title: 'Affectées',
-                                      value:
-                                          '${stats.kpis.assignedInterventions}',
-                                      icon: Icons.assignment,
-                                      color: ChartConfig
-                                          .kpiColors['interventions']!,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppTheme.space16),
-                                  Expanded(
-                                    child: _SimpleKpiCard(
-                                      title: 'Réalisées',
-                                      value:
-                                          '${stats.kpis.completedInterventions}',
-                                      icon: Icons.check_circle_outline,
-                                      color: ChartConfig.kpiColors['sites']!,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppTheme.space24),
-
-                              // 2. Graphique avec le nombre d'intervention en fonction temps
-                              InterventionTrendChartWidget(
-                                data: stats.workloadCurve,
-                                title: 'Interventions',
-                                subtitle:
-                                    'Nombre d\'interventions par semaine (8 dernières semaines)',
-                              ),
-                              const SizedBox(height: AppTheme.space24),
-
-                              // 3. Sites fréquentés
-                              if (stats.topSites.isNotEmpty) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(AppTheme.space16),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.surface,
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                                    border: Border.all(color: AppTheme.border),
-                                    boxShadow: AppTheme.shadowSm,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Sites Fréquents',
-                                        style: AppTheme
-                                            .lightTheme
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              color: AppTheme.textPrimary,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                      const SizedBox(height: AppTheme.space12),
-                                      Column(
-                                        children: stats.topSites
-                                            .map(
-                                              (site) => InkWell(
-                                                onTap: () => context.pushNamed(
-                                                  'site-dashboard',
-                                                  pathParameters: {
-                                                    'siteId': site.siteId,
-                                                  },
-                                                ),
-                                                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 8.0,
-                                                      ),
-                                                  child: Row(
-                                                    children: [
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.all(
-                                                              AppTheme.space8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: AppTheme
-                                                              .surfaceVariant,
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                AppTheme.radiusMd,
-                                                              ),
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.business,
-                                                          size: 20,
-                                                          color: AppTheme
-                                                              .primary,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: AppTheme.space12),
-                                                      Expanded(
-                                                        child: Column(
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
-                                                          children: [
-                                                            Text(
-                                                              site.siteName,
-                                                              style: TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: AppTheme.textPrimary,
-                                                              ),
-                                                            ),
-                                                            Text(
-                                                              '${site.visitCount} visites',
-                                                              style: TextStyle(
-                                                                color: AppTheme.textSecondary,
-                                                                fontSize: 13,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      Icon(
-                                                        Icons.chevron_right,
-                                                        color: AppTheme.textTertiary,
-                                                        size: 20,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: AppTheme.space24),
-                              ],
-                            ],
-                          );
-                        },
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (e, s) => Text('Erreur: $e'),
-                      ),
-                    ]),
-                  ),
-                ),
-                const SliverPadding(padding: EdgeInsets.only(bottom: AppTheme.space24)),
-              ],
+      body: ContentContainer(
+        maxWidth: 1000,
+        child: ListView(
+          padding: const EdgeInsets.all(AppTheme.space16),
+          children: [
+            _TechnicianHeader(technician: technician),
+            const SizedBox(height: AppTheme.space16),
+            PeriodFilterWidget(
+              selectedPeriod: selectedPeriod,
+              onPeriodChanged: (period) =>
+                  ref.read(selectedPeriodProvider.notifier).setPeriod(period),
             ),
+            const SizedBox(height: AppTheme.space24),
+            _Kpis(query: query),
+            const SizedBox(height: AppTheme.space24),
+            ref.watch(evolutionProvider(query)).when(
+                  data: (evolution) => TimeEvolutionChartWidget(
+                    data: evolution.points,
+                    title: 'Interventions',
+                    subtitle: 'Interventions ${evolution.granularityLabel}',
+                  ),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Text('Erreur: $e'),
+                ),
+            const SizedBox(height: AppTheme.space24),
+            _FrequentSites(query: query),
+            const SizedBox(height: AppTheme.space24),
+            _RecentInterventions(query: query),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _SimpleKpiCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
+class _Kpis extends ConsumerWidget {
+  final StatsQuery query;
+  const _Kpis({required this.query});
 
-  const _SimpleKpiCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(dashboardStatsProvider(query)).when(
+          data: (stats) => KpiGrid(
+            cards: [
+              KpiCard(
+                title: 'Interventions',
+                value: stats.totalInterventions.toString(),
+                icon: Icons.assignment,
+                iconColor: ChartConfig.kpiColors['interventions']!,
+                subtitle: 'Sur la période',
+              ),
+              KpiCard(
+                title: 'Résolues',
+                value: stats.totalResolu.toString(),
+                icon: Icons.check_circle,
+                iconColor: const Color(0xFF10B981),
+                subtitle: 'CRI résolus',
+              ),
+              KpiCard(
+                title: 'Durée moy.',
+                value: stats.dureeMoyenneFormatee,
+                icon: Icons.timer,
+                iconColor: const Color(0xFF6366F1),
+                subtitle: 'Par intervention',
+              ),
+              KpiCard(
+                title: 'Récurrences',
+                value: stats.totalRecurrenceRequise.toString(),
+                icon: Icons.replay,
+                iconColor: AppTheme.error,
+                subtitle: 'Retours nécessaires',
+              ),
+            ],
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('Erreur: $e'),
+        );
+  }
+}
+
+class _FrequentSites extends ConsumerWidget {
+  final StatsQuery query;
+  const _FrequentSites({required this.query});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sites = ref.watch(siteStatsProvider(query)).valueOrNull ?? const [];
+    if (sites.isEmpty) return const SizedBox.shrink();
+
+    return _Card(
+      title: 'Sites fréquents',
+      child: Column(
+        children: sites.take(5).map((site) {
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.business, color: AppTheme.primaryContent),
+            title: Text(
+              site.siteNom,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              '${site.totalInterventions} interventions',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            ),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+            onTap: () => context.pushNamed(
+              'site-dashboard',
+              pathParameters: {'siteId': site.siteNom},
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _RecentInterventions extends ConsumerWidget {
+  final StatsQuery query;
+  const _RecentInterventions({required this.query});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _Card(
+      title: 'Dernières interventions',
+      child: ref.watch(recentInterventionsProvider((query: query, limit: 10))).when(
+            data: (items) => items.isEmpty
+                ? Text(
+                    'Aucune intervention sur la période',
+                    style: TextStyle(color: AppTheme.textTertiary),
+                  )
+                : Column(
+                    children: items
+                        .map(
+                          (item) => MobileInterventionListItem(
+                            type: item.typeLabel,
+                            client:
+                                '${item.siteNom ?? item.clientNom} - ${formatDurationMinutes(item.dureeMinutes ?? 0)}',
+                            date: item.interventionDate,
+                            status: item.statusLabel,
+                            onTap: () => context.pushNamed(
+                              'cri-view',
+                              pathParameters: {'id': item.id},
+                              queryParameters: {'type': item.source},
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Erreur: $e'),
+          ),
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  final String title;
+  final Widget child;
+  const _Card({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -279,32 +222,16 @@ class _SimpleKpiCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppTheme.space8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: AppTheme.space12),
           Text(
-            value,
+            title,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: AppTheme.space4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          const SizedBox(height: AppTheme.space12),
+          child,
         ],
       ),
     );
@@ -312,11 +239,22 @@ class _SimpleKpiCard extends StatelessWidget {
 }
 
 class _TechnicianHeader extends StatelessWidget {
-  final TechnicianModel technician;
+  /// `null` pendant le chargement (ou technicien désactivé depuis).
+  final TechnicianModel? technician;
   const _TechnicianHeader({required this.technician});
 
   @override
   Widget build(BuildContext context) {
+    final name = technician?.name ?? '…';
+    final initials = name.trim().isEmpty || name == '…'
+        ? '?'
+        : name
+            .trim()
+            .split(RegExp(r'\s+'))
+            .take(2)
+            .map((w) => w[0].toUpperCase())
+            .join();
+
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -340,9 +278,7 @@ class _TechnicianHeader extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              technician.name.isNotEmpty
-                  ? technician.name.substring(0, 2).toUpperCase()
-                  : '?',
+              initials,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -356,24 +292,24 @@ class _TechnicianHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  technician.name,
+                  name,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                Text(
-                  UserRole.fromString(technician.role)?.label ??
-                      technician.role ??
-                      'Technicien',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.primaryContent,
-                    fontWeight: FontWeight.w500,
+                if (technician?.role != null)
+                  Text(
+                    UserRole.fromString(technician!.role)?.label ??
+                        technician!.role!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppTheme.primaryContent,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                if (technician.email != null) ...[
+                if (technician?.email != null) ...[
                   const SizedBox(height: AppTheme.space4),
                   Row(
                     children: [
@@ -383,9 +319,12 @@ class _TechnicianHeader extends StatelessWidget {
                         color: AppTheme.textSecondary,
                       ),
                       const SizedBox(width: AppTheme.space8),
-                      Text(
-                        technician.email!,
-                        style: TextStyle(color: AppTheme.textSecondary),
+                      Flexible(
+                        child: Text(
+                          technician!.email!,
+                          style: TextStyle(color: AppTheme.textSecondary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

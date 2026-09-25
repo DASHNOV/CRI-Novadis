@@ -9,6 +9,9 @@ import 'package:novadis_cri/models/monthly_activity.dart';
 import 'package:novadis_cri/models/site_stats.dart';
 import 'package:novadis_cri/models/technician_detailed_stats.dart';
 import 'package:novadis_cri/models/distribution_stats.dart';
+import 'package:novadis_cri/models/dashboard_evolution.dart';
+import 'package:novadis_cri/models/recent_intervention.dart';
+import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
 
 /// Provider pour le StatsApiService
 final statsApiServiceProvider = Provider<StatsApiService>((ref) {
@@ -96,76 +99,100 @@ class StatsApiService {
   // 🌐 Endpoints globaux (Admin uniquement)
   // ──────────────────────────────────────────────────
 
-  /// Récupère les statistiques globales (admin uniquement)
-  /// [periodDays] : 1, 7, 30, 90, 365 ou null pour tout
-  Future<GlobalStats> getGlobalStats({int? periodDays}) async {
+  // ──────────────────────────────────────────────────
+  // 📊 Dashboard — mêmes calculs, deux périmètres :
+  //    global = /api/global (capacité GlobalStats),
+  //    sinon  = /api/personal/dashboard (CRI de l'utilisateur connecté).
+  // ──────────────────────────────────────────────────
+
+  Future<dynamic> _getData(String path, Map<String, dynamic> queryParameters) async {
     try {
-      final queryParams = <String, dynamic>{};
-      if (periodDays != null) queryParams['period'] = periodDays;
-      final response = await _dio.get(
-        '/global/stats',
-        queryParameters: queryParams,
-      );
-      final data = response.data['data'];
-      return GlobalStats.fromJson(data);
+      final response = await _dio.get(path, queryParameters: queryParameters);
+      return response.data['data'];
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  /// Récupère les statistiques par site (admin uniquement)
-  Future<List<SiteStats>> getStatsBySite({int? periodDays}) async {
-    try {
-      final queryParams = <String, dynamic>{};
-      if (periodDays != null) queryParams['period'] = periodDays;
-      final response = await _dio.get(
-        '/global/stats/by-site',
-        queryParameters: queryParams,
+  Future<dynamic> _getDashboard(
+    String globalPath,
+    String personalPath,
+    StatsQuery query, {
+    required bool global,
+    Map<String, dynamic> extra = const {},
+  }) =>
+      _getData(
+        global ? globalPath : personalPath,
+        {...query.toQueryParameters(), ...extra},
       );
-      final data = response.data['data'] as List;
-      return data
-          .map((item) => SiteStats.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
+
+  /// KPI (total, résolus, durée moyenne, récurrences…) du périmètre.
+  Future<GlobalStats> getDashboardStats(StatsQuery query, {required bool global}) async {
+    final data = await _getDashboard(
+      '/global/stats',
+      '/personal/dashboard/stats',
+      query,
+      global: global,
+    );
+    return GlobalStats.fromJson(data as Map<String, dynamic>);
   }
 
-  /// Récupère les statistiques par technicien (admin uniquement)
-  Future<List<TechnicianDetailedStats>> getStatsByTechnician({
-    int? periodDays,
+  /// Statistiques par site.
+  Future<List<SiteStats>> getStatsBySite(StatsQuery query, {required bool global}) async {
+    final data = await _getDashboard(
+      '/global/stats/by-site',
+      '/personal/dashboard/by-site',
+      query,
+      global: global,
+    );
+    return (data as List)
+        .map((item) => SiteStats.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Courbe d'évolution (granularité choisie par l'API).
+  Future<DashboardEvolution> getEvolution(StatsQuery query, {required bool global}) async {
+    final data = await _getDashboard(
+      '/global/stats/evolution',
+      '/personal/dashboard/evolution',
+      query,
+      global: global,
+    );
+    return DashboardEvolution.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Dernières interventions (date d'intervention décroissante).
+  Future<List<RecentIntervention>> getRecentInterventions(
+    StatsQuery query, {
+    required bool global,
+    int limit = 10,
   }) async {
-    try {
-      final queryParams = <String, dynamic>{};
-      if (periodDays != null) queryParams['period'] = periodDays;
-      final response = await _dio.get(
-        '/global/stats/by-technician',
-        queryParameters: queryParams,
-      );
-      final data = response.data['data'] as List;
-      return data
-          .map((item) =>
-              TechnicianDetailedStats.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
+    final data = await _getDashboard(
+      '/global/stats/recent',
+      '/personal/dashboard/recent',
+      query,
+      global: global,
+      extra: {'limit': limit},
+    );
+    return (data as List)
+        .map((item) => RecentIntervention.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
-  /// Récupère les statistiques de distribution croisées (admin uniquement)
-  Future<DistributionStats> getDistributionStats({int? periodDays}) async {
-    try {
-      final queryParams = <String, dynamic>{};
-      if (periodDays != null) queryParams['period'] = periodDays;
-      final response = await _dio.get(
-        '/global/stats/distribution',
-        queryParameters: queryParams,
-      );
-      final data = response.data['data'];
-      return DistributionStats.fromJson(data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
+  /// Statistiques par technicien (global uniquement).
+  Future<List<TechnicianDetailedStats>> getStatsByTechnician(StatsQuery query) async {
+    final data =
+        await _getData('/global/stats/by-technician', query.toQueryParameters());
+    return (data as List)
+        .map((item) => TechnicianDetailedStats.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Statistiques croisées (global uniquement).
+  Future<DistributionStats> getDistributionStats(StatsQuery query) async {
+    final data =
+        await _getData('/global/stats/distribution', query.toQueryParameters());
+    return DistributionStats.fromJson(data as Map<String, dynamic>);
   }
 
   /// Récupère tous les CRI avec info technicien (admin uniquement)

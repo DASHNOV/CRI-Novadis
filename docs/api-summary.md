@@ -113,9 +113,17 @@ duration?, status, data?, technicianSignature?, clientSignature?
 | GET | `/activity` | — | Activité par technicien (nb CRI 7j / 30j / total) |
 | GET | `/activity-chart` | — | Activité quotidienne sur 7 jours |
 | GET | `/technicians` | — | Liste des utilisateurs pour dropdown |
-| GET | `/stats/by-site` | `?period=30` | Stats agrégées par site |
-| GET | `/stats/by-technician` | `?period=30` | Stats agrégées par technicien |
-| GET | `/stats/distribution` | `?period=30` | Crosstabs et évolution mensuelle |
+| GET | `/stats/by-site` | filtre ↓ | Stats agrégées par site |
+| GET | `/stats/by-technician` | filtre ↓ | Stats agrégées par technicien |
+| GET | `/stats/distribution` | filtre ↓ | Crosstabs et évolution mensuelle |
+| GET | `/stats/evolution` | filtre ↓ | Courbe : `{ granularity: day\|week\|month, points: [{ debut, label, total, services, projets, resolu }] }` |
+| GET | `/stats/recent` | filtre ↓, `&limit=10` (1–100) | Dernières interventions (date d'intervention décroissante), sans `data` |
+
+**Filtre commun des stats** (`StatsQuery` → `StatsFilter`, `/stats*` ici et `/api/personal/dashboard`)
+- `period=N` : les N derniers jours, aujourd'hui compris (`[minuit J-(N-1), …[`, sans borne haute). Max 3660.
+- `from=AAAA-MM-JJ&to=AAAA-MM-JJ` : plage, `to` **inclus** ; prime sur `period`. `to < from` → **400**.
+- `technicienId=<guid>` : CRI de ce technicien. `site=<nom>` : CRI de ce site (nom du site normalisé, sinon saisie libre).
+- Sans période : toute la base. Évolution : 7 jours minimum ; jour ≤ 31 j, semaine (lundi) ≤ 92 j, mois au-delà.
 
 **Réponse `/stats`** (`GlobalStatsDto`)
 ```json
@@ -128,6 +136,19 @@ duration?, status, data?, technicianSignature?, clientSignature?
 }
 ```
 - `totalInterventions` : CRI de la période demandée. `totalCeMois` = même valeur, ancien nom trompeur conservé pour les APK installés (ne plus l'utiliser).
+
+---
+
+## Dashboard personnel — `/api/personal/dashboard`
+
+`PersonalStats` (Technician, Admin). Mêmes calculs et mêmes réponses que `/api/global`, périmètre **forcé** sur les CRI de l'utilisateur connecté (`technicienId` ignoré). Filtre commun ci-dessus.
+
+| Méthode | Route | Réponse |
+|---------|-------|---------|
+| GET | `/stats` | `GlobalStatsDto` |
+| GET | `/by-site` | `SiteStatsDto[]` |
+| GET | `/evolution` | `EvolutionDto` |
+| GET | `/recent` (`&limit=`) | `RecentInterventionDto[]` |
 
 ---
 
