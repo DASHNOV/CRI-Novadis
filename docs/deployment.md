@@ -94,6 +94,8 @@ précédente et workflow **en échec**. Les 5 dernières images taguées sont co
 4. APK : `flutter build apk --release --dart-define=GOOGLE_MAPS_API_KEY=<clé>` — Gradle reporte la clé dans le manifeste (`com.google.android.geo.API_KEY`).
 5. Dev web : `flutter run -d chrome --dart-define=GOOGLE_MAPS_API_KEY=<clé>`.
 
+Clé refusée par Google (`RefererNotAllowedMapError`, `ApiNotActivatedMapError`, facturation absente…) : la carte **repasse automatiquement en Plan IGN** (icône ⓘ en haut à droite) et la cause exacte est dans la console du navigateur. En dev, `flutter run -d chrome` prend un port aléatoire : fixer `--web-port 5000` et autoriser `http://localhost:5000/*` si le joker de port n'est pas accepté.
+
 Le bouton **Itinéraire** ouvre `https://www.google.com/maps/dir/?api=1&destination=…` (application Google Maps sur mobile, onglet sur le web) : il ne consomme pas la clé et fonctionne aussi avec la carte IGN.
 
 ### Prérequis serveur (une fois)

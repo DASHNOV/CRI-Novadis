@@ -63,11 +63,31 @@ class SitesMap extends StatelessWidget {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
         }
-        return GoogleSitesMap(
-          sites: sites,
-          selected: selected,
-          onSelect: onSelect,
-          onOpenSite: onOpenSite,
+        // Clé refusée par Google (référent, API, facturation) : repli IGN
+        // plutôt que l'écran d'erreur Google.
+        return ValueListenableBuilder<bool>(
+          valueListenable: GoogleMapsConfig.authFailed,
+          builder: (context, failed, _) => failed
+              ? Stack(
+                  children: [
+                    ign,
+                    const Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Tooltip(
+                        message: 'Clé Google Maps refusée (voir la console du navigateur) : '
+                            'carte Plan IGN affichée.',
+                        child: Icon(Icons.info_outline, color: AppTheme.warning),
+                      ),
+                    ),
+                  ],
+                )
+              : GoogleSitesMap(
+                  sites: sites,
+                  selected: selected,
+                  onSelect: onSelect,
+                  onOpenSite: onOpenSite,
+                ),
         );
       },
     );

@@ -1,5 +1,16 @@
 // ignore: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
+import 'dart:js_interop';
+
+import 'package:flutter/foundation.dart';
+
+/// Rappel global appelé par le SDK quand Google refuse la clé (référent non
+/// autorisé, API non activée, facturation absente…).
+@JS('gm_authFailure')
+external set _gmAuthFailure(JSFunction callback);
+
+/// Passe à `true` si Google refuse la clé : la carte bascule sur le Plan IGN.
+final ValueNotifier<bool> googleMapsAuthFailed = ValueNotifier(false);
 
 Future<void>? _loading;
 
@@ -9,6 +20,8 @@ Future<void>? _loading;
 /// les pages sans carte ne paient pas le chargement.
 Future<void> ensureGoogleMapsLoaded(String apiKey) {
   return _loading ??= () async {
+    // Avant le chargement : le SDK vérifie la clé dès l'initialisation.
+    _gmAuthFailure = (() => googleMapsAuthFailed.value = true).toJS;
     try {
       await _inject(
         'https://maps.googleapis.com/maps/api/js?key=${Uri.encodeQueryComponent(apiKey)}&language=fr&region=FR',
