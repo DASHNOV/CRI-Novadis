@@ -118,6 +118,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 | GET | `/stats/distribution` | filtre ↓ | Crosstabs et évolution mensuelle |
 | GET | `/stats/evolution` | filtre ↓ | Courbe : `{ granularity: day\|week\|month, points: [{ debut, label, total, services, projets, resolu }] }` |
 | GET | `/stats/recent` | filtre ↓, `&limit=10` (1–100) | Dernières interventions (date d'intervention décroissante), sans `data` |
+| GET | `/stats/alerts` | filtre ↓, `&staleDays=14` (1–365) | `DashboardAlertsDto` : sites > 20 % de récurrence (≥ 3 CRI, sur la période), services non résolus dont l'intervention date d'au moins `staleDays` jours (depuis le début de la période), escalades niveau 2 (période) ; 20 éléments max par liste + totaux |
 
 **Filtre commun des stats** (`StatsQuery` → `StatsFilter`, `/stats*` ici et `/api/personal/dashboard`)
 - `period=N` : les N derniers jours, aujourd'hui compris (`[minuit J-(N-1), …[`, sans borne haute). Max 3660.
@@ -150,6 +151,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 | GET | `/by-site` | `SiteStatsDto[]` |
 | GET | `/evolution` | `EvolutionDto` |
 | GET | `/recent` (`&limit=`) | `RecentInterventionDto[]` |
+| GET | `/alerts` (`&staleDays=`) | `DashboardAlertsDto` |
 
 ---
 

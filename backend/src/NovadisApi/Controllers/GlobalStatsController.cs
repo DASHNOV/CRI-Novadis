@@ -126,5 +126,16 @@ namespace NovadisApi.Controllers
             var data = await _stats.GetRecentInterventionsAsync(filter, limit, ct);
             return Ok(ApiResponse<IEnumerable<RecentInterventionDto>>.SuccessResponse(data));
         }
+
+        /// <summary>GET /api/global/stats/alerts?period=30&amp;staleDays=14 - Ce qui demande une action</summary>
+        [HttpGet("stats/alerts")]
+        public async Task<ActionResult<ApiResponse<DashboardAlertsDto>>> GetAlerts(
+            [FromQuery] StatsQuery query, [FromQuery] int staleDays = 14, CancellationToken ct = default)
+        {
+            if (!query.TryToFilter(out var filter, out var error))
+                return BadRequest(ApiResponse<DashboardAlertsDto>.ErrorResponse(error!));
+            var data = await _stats.GetAlertsAsync(filter, staleDays, ct);
+            return Ok(ApiResponse<DashboardAlertsDto>.SuccessResponse(data));
+        }
     }
 }

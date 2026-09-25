@@ -488,10 +488,69 @@ public sealed class GlobalStatsService : IGlobalStatsService
     public async Task<IReadOnlyList<RecentInterventionDto>> GetRecentInterventionsAsync(
         StatsFilter filter, int limit, CancellationToken ct = default)
     {
-        return await filter.Apply(_context.CRIForms.AsNoTracking())
-            .OrderByDescending(c => c.InterventionDate)
-            .ThenByDescending(c => c.CreatedAt)
-            .Take(Math.Clamp(limit, 1, 100))
+        return await ToRecent(filter.Apply(_context.CRIForms.AsNoTracking())
+                .OrderByDescending(c => c.InterventionDate)
+                .ThenByDescending(c => c.CreatedAt)
+                .Take(Math.Clamp(limit, 1, 100)))
+            .ToListAsync(ct);
+    }
+
+    /// <summary>Statuts de service « pas terminé ».</summary>
+    private static readonly string[] UnresolvedStatuses =
+        { "nonResolu", "partiellementResolu", "enAttentePieces", "escaladeNiveau2" };
+
+    public const double RecurrenceAlertThreshold = 20;
+    public const int RecurrenceAlertMinInterventions = 3;
+
+    public async Task<DashboardAlertsDto> GetAlertsAsync(
+        StatsFilter filter, int staleDays, CancellationToken ct = default)
+    {
+        staleDays = Math.Clamp(staleDays, 1, 365);
+        var staleBefore = DateTime.UtcNow.Date.AddDays(-staleDays + 1);   // intervention ≥ staleDays jours
+
+        var sites = await GetStatsBySiteAsync(filter, ct);
+        var unresolved = filter.Apply(_context.CRIForms.AsNoTracking())
+            .Where(c => c.InterventionType == "Service"
+                && c.ResolutionStatus != null && UnresolvedStatuses.Contains(c.ResolutionStatus)
+                && c.InterventionDate < staleBefore);
+        var escalated = filter.Apply(_context.CRIForms.AsNoTracking())
+            .Where(c => c.ResolutionStatus == "escaladeNiveau2");
+
+        return new DashboardAlertsDto
+        {
+            SeuilRecurrence = RecurrenceAlertThreshold,
+            MinInterventionsSite = RecurrenceAlertMinInterventions,
+            JoursSansResolution = staleDays,
+            SitesRecurrence = sites
+                .Where(s => s.TotalInterventions >= RecurrenceAlertMinInterventions
+                    && s.TauxRecurrence > RecurrenceAlertThreshold)
+                .OrderByDescending(s => s.TauxRecurrence)
+                .ThenByDescending(s => s.TotalInterventions)
+                .Select(s => new SiteAlertDto
+                {
+                    SiteNom = s.SiteNom,
+                    ClientNom = s.ClientNom,
+                    TotalInterventions = s.TotalInterventions,
+                    TotalRecurrenceRequise = s.TotalRecurrenceRequise,
+                    TauxRecurrence = s.TauxRecurrence,
+                })
+                .ToList(),
+            CriNonResolusTotal = await unresolved.CountAsync(ct),
+            CriNonResolus = await ToRecent(unresolved
+                    .OrderBy(c => c.InterventionDate)
+                    .Take(DashboardAlertsDto.MaxItems))
+                .ToListAsync(ct),
+            EscaladesTotal = await escalated.CountAsync(ct),
+            Escalades = await ToRecent(escalated
+                    .OrderByDescending(c => c.InterventionDate)
+                    .Take(DashboardAlertsDto.MaxItems))
+                .ToListAsync(ct),
+        };
+    }
+
+    private static IQueryable<RecentInterventionDto> ToRecent(IQueryable<CRIForm> query)
+    {
+        return query
             .Select(c => new RecentInterventionDto
             {
                 Id = c.Id,
@@ -507,7 +566,6 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 ResolutionStatus = c.ResolutionStatus,
                 ProjectStatus = c.ProjectStatus,
                 DureeMinutes = c.DureeMinutes,
-            })
-            .ToListAsync(ct);
+            });
     }
 }

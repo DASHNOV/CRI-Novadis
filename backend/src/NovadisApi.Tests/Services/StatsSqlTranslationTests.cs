@@ -31,6 +31,7 @@ public class StatsSqlTranslationTests
     public static TheoryData<string> Methods() => new()
     {
         "global", "by-site", "by-technician", "distribution", "evolution", "evolution-all-time", "recent",
+        "alerts",
     };
 
     [Theory]
@@ -49,6 +50,7 @@ public class StatsSqlTranslationTests
             "evolution" => () => service.GetEvolutionAsync(FullFilter),
             "evolution-all-time" => () => service.GetEvolutionAsync(StatsFilter.All with { Site = "Site" }),
             "recent" => () => service.GetRecentInterventionsAsync(FullFilter, 10),
+            "alerts" => () => service.GetAlertsAsync(FullFilter, 14),
             _ => throw new ArgumentOutOfRangeException(nameof(method)),
         };
 

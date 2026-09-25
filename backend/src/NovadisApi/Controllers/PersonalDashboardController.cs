@@ -77,5 +77,15 @@ namespace NovadisApi.Controllers
             return Ok(ApiResponse<IEnumerable<RecentInterventionDto>>.SuccessResponse(
                 await _stats.GetRecentInterventionsAsync(filter, limit, ct)));
         }
+
+        /// <summary>GET /api/personal/dashboard/alerts?period=30&amp;staleDays=14</summary>
+        [HttpGet("alerts")]
+        public async Task<ActionResult<ApiResponse<DashboardAlertsDto>>> GetAlerts(
+            [FromQuery] StatsQuery query, [FromQuery] int staleDays = 14, CancellationToken ct = default)
+        {
+            if (OwnFilter<DashboardAlertsDto>(query, out var failure) is not { } filter) return failure!;
+            return Ok(ApiResponse<DashboardAlertsDto>.SuccessResponse(
+                await _stats.GetAlertsAsync(filter, staleDays, ct)));
+        }
     }
 }

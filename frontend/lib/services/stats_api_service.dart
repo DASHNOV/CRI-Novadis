@@ -9,6 +9,7 @@ import 'package:novadis_cri/models/monthly_activity.dart';
 import 'package:novadis_cri/models/site_stats.dart';
 import 'package:novadis_cri/models/technician_detailed_stats.dart';
 import 'package:novadis_cri/models/distribution_stats.dart';
+import 'package:novadis_cri/models/dashboard_alerts.dart';
 import 'package:novadis_cri/models/dashboard_evolution.dart';
 import 'package:novadis_cri/models/recent_intervention.dart';
 import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
@@ -177,6 +178,23 @@ class StatsApiService {
     return (data as List)
         .map((item) => RecentIntervention.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Alertes : sites à forte récurrence, services non résolus depuis
+  /// [staleDays] jours, escalades.
+  Future<DashboardAlerts> getAlerts(
+    StatsQuery query, {
+    required bool global,
+    int staleDays = 14,
+  }) async {
+    final data = await _getDashboard(
+      '/global/stats/alerts',
+      '/personal/dashboard/alerts',
+      query,
+      global: global,
+      extra: {'staleDays': staleDays},
+    );
+    return DashboardAlerts.fromJson(data as Map<String, dynamic>);
   }
 
   /// Statistiques par technicien (global uniquement).

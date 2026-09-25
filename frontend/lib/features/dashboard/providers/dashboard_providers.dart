@@ -10,6 +10,7 @@ import 'package:novadis_cri/models/global_stats.dart';
 import 'package:novadis_cri/models/site_stats.dart';
 import 'package:novadis_cri/models/technician_detailed_stats.dart';
 import 'package:novadis_cri/models/distribution_stats.dart';
+import 'package:novadis_cri/models/dashboard_alerts.dart';
 import 'package:novadis_cri/models/dashboard_evolution.dart';
 import 'package:novadis_cri/models/recent_intervention.dart';
 
@@ -190,6 +191,19 @@ final recentInterventionsProvider = FutureProvider.autoDispose
           );
     });
 
+/// Ancienneté (jours) à partir de laquelle un service non résolu est signalé.
+final alertStaleDaysProvider = StateProvider<int>((ref) => 14);
+
+/// Alertes du périmètre.
+final dashboardAlertsProvider = FutureProvider.autoDispose
+    .family<DashboardAlerts, StatsQuery>((ref, query) {
+      return ref.watch(statsApiServiceProvider).getAlerts(
+            query,
+            global: ref.watch(dashboardIsGlobalProvider),
+            staleDays: ref.watch(alertStaleDaysProvider),
+          );
+    });
+
 /// Statistiques par technicien (global uniquement).
 final technicianStatsProvider = FutureProvider.autoDispose
     .family<List<TechnicianDetailedStats>, StatsQuery>((ref, query) {
@@ -219,6 +233,7 @@ extension DashboardRefX on WidgetRef {
     invalidate(recentInterventionsProvider);
     invalidate(technicianStatsProvider);
     invalidate(distributionStatsProvider);
+    invalidate(dashboardAlertsProvider);
     invalidate(techniciansProvider);
   }
 }
