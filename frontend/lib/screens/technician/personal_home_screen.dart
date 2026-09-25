@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:novadis_cri/core/config/app_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:novadis_cri/core/providers/main_nav_provider.dart';
 import 'package:intl/intl.dart';
@@ -134,6 +136,10 @@ class _PersonalHomeScreenState extends ConsumerState<PersonalHomeScreen> {
 
                   // KPI stats
                   _isLoading ? _buildStatsShimmer() : _buildStatsRow(),
+                  const Gap(AppTheme.space16),
+
+                  // Carte des sites + itinéraire
+                  _buildSitesMapShortcut(),
                   const Gap(AppTheme.space24),
 
                   // Heatmap activité annuelle (style GitHub)
@@ -158,6 +164,51 @@ class _PersonalHomeScreenState extends ConsumerState<PersonalHomeScreen> {
         ),
       ),
       floatingActionButton: _buildSpeedDial(),
+    );
+  }
+
+  // ─── Carte des sites ───
+
+  Widget _buildSitesMapShortcut() {
+    return _HoverCard(
+      onTap: () => context.push(AppRouter.sitesMap),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.space16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppTheme.space12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryContent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: Icon(Icons.map_rounded, color: AppTheme.primaryContent),
+            ),
+            const SizedBox(width: AppTheme.space16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Carte des sites',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tous les sites et l\'itinéraire pour s\'y rendre',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary),
+          ],
+        ),
+      ),
     );
   }
 

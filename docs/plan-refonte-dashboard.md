@@ -180,6 +180,16 @@ Branche : `feat/google-maps`
 
 ---
 
+### Carte des sites pour les techniciens (2026-09-25)
+Branche : `feat/tech-sites-map`
+
+- [x] Route `/sites-map` (tout utilisateur connecté) : carte plein écran de tous les sites, recherche (sans accents), fiche avec « Itinéraire »
+- [x] Raccourci « Carte des sites » sur l'accueil technicien (choix : pas de 6e onglet, la barre mobile n'en affiche que 5)
+- [x] En couleur : les sites où l'utilisateur est déjà intervenu, sur **tout son historique** (ses propres CRI pour un technicien, via `/api/personal/dashboard/by-site`) ; libellés « Jamais visité »
+- [x] Tests : `sites_map_page_test.dart` (route sans capacité, recherche → fiche)
+
+---
+
 ## 5. Ordre recommandé
 
 1. **Phase 1** — des chiffres faux font plus de tort qu'un dashboard incomplet

@@ -21,12 +21,16 @@ class GoogleSitesMap extends StatefulWidget {
   final ValueChanged<MapSite?> onSelect;
   final ValueChanged<MapSite>? onOpenSite;
 
+  /// Libellés des sites sans activité (légende, fiche).
+  final InactiveSiteLabels labels;
+
   const GoogleSitesMap({
     super.key,
     required this.sites,
     required this.selected,
     required this.onSelect,
     this.onOpenSite,
+    this.labels = InactiveSiteLabels.period,
   });
 
   @override
@@ -145,7 +149,7 @@ class _GoogleSitesMapState extends State<GoogleSitesMap> {
           Positioned(
             top: 8,
             left: 8,
-            child: PointerInterceptor(child: const SiteMapLegend()),
+            child: PointerInterceptor(child: SiteMapLegend(labels: widget.labels)),
           ),
           if (widget.selected != null)
             Positioned(
@@ -159,6 +163,7 @@ class _GoogleSitesMapState extends State<GoogleSitesMap> {
                   onOpen: widget.onOpenSite == null || widget.selected!.stats == null
                       ? null
                       : () => widget.onOpenSite!(widget.selected!),
+                  labels: widget.labels,
                 ),
               ),
             ),

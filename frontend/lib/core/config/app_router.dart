@@ -9,6 +9,7 @@ import 'package:novadis_cri/screens/role_home_screen.dart';
 import 'package:novadis_cri/features/dashboard/pages/main_dashboard_page.dart';
 import 'package:novadis_cri/features/dashboard/pages/site_dashboard_page.dart';
 import 'package:novadis_cri/features/dashboard/pages/technician_dashboard_page.dart';
+import 'package:novadis_cri/features/dashboard/pages/sites_map_page.dart';
 import 'package:novadis_cri/features/cri_form/cri_form_screen.dart';
 import 'package:novadis_cri/features/cri_form/pages/cri_projet_form_page.dart';
 import 'package:novadis_cri/features/cri_form/pages/cri_service_form_page.dart';
@@ -25,6 +26,9 @@ class AppRouter {
   static const String dashboard = '/dashboard';
   static const String siteDashboard = '/dashboard/site/:siteId';
   static const String technicianDashboard = '/dashboard/technician/:techId';
+
+  /// Carte de tous les sites + itinéraire : tout utilisateur connecté.
+  static const String sitesMap = '/sites-map';
   static const String criForm = '/cri-form';
   static const String criNewProjet = '/cri/new/projet';
   static const String criNewService = '/cri/new/service';
@@ -147,6 +151,11 @@ class AppRouter {
           final siteId = state.pathParameters['siteId'] ?? '';
           return SiteDashboardPage(siteId: siteId);
         },
+      ),
+      GoRoute(
+        path: sitesMap,
+        name: 'sites-map',
+        builder: (context, state) => const SitesMapPage(),
       ),
       // Dashboard Technicien
       GoRoute(

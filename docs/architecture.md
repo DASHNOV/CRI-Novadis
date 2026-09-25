@@ -301,6 +301,7 @@ lib/
 | `/dashboard` | MainDashboardPage : équipe (`/api/global`) si `GlobalStats`, sinon ses CRI (`/api/personal/dashboard`) | Authentifié |
 | `/dashboard/site/:siteId` | SiteDashboardPage — `siteId` = nom du site | `GlobalStats` |
 | `/dashboard/technician/:techId` | TechnicianDashboardPage — `techId` = ID utilisateur (GUID) | `GlobalStats` |
+| `/sites-map` | SitesMapPage — carte plein écran de tous les sites, recherche, itinéraire (raccourci sur l'accueil technicien) | Authentifié |
 | `/cri-form` | CriFormScreen (choix type) | `CriCreate` |
 | `/cri/new/projet` | CriProjetFormPage | `CriCreate` |
 | `/cri/new/service` | CriServiceFormPage | `CriCreate` |

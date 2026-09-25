@@ -30,9 +30,29 @@ Future<void> openDirections(BuildContext context, MapSite site) async {
   }
 }
 
+/// Libellés des sites sans activité : « période » (dashboard) ou « jamais
+/// visité » (carte technicien, tout son historique).
+class InactiveSiteLabels {
+  final String legend;
+  final String card;
+
+  const InactiveSiteLabels({required this.legend, required this.card});
+
+  static const period = InactiveSiteLabels(
+    legend: 'Sans CRI sur la période',
+    card: 'Aucun CRI sur la période',
+  );
+  static const neverVisited = InactiveSiteLabels(
+    legend: 'Jamais visité',
+    card: 'Vous n\'y êtes jamais intervenu',
+  );
+}
+
 /// Légende de la carte.
 class SiteMapLegend extends StatelessWidget {
-  const SiteMapLegend({super.key});
+  final InactiveSiteLabels labels;
+
+  const SiteMapLegend({super.key, this.labels = InactiveSiteLabels.period});
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +87,7 @@ class SiteMapLegend extends StatelessWidget {
           item(AppTheme.success, '< 10 %'),
           item(AppTheme.warning, '10 – 20 %'),
           item(AppTheme.error, '> 20 %'),
-          item(inactiveSiteColor, 'Sans CRI sur la période'),
+          item(inactiveSiteColor, labels.legend),
           const Text('Taille : nombre de CRI', style: TextStyle(fontSize: 10, color: Colors.black54)),
         ],
       ),
@@ -83,11 +103,14 @@ class SelectedSiteCard extends StatelessWidget {
   /// `null` : pas de page site (périmètre personnel, ou site sans activité).
   final VoidCallback? onOpen;
 
+  final InactiveSiteLabels labels;
+
   const SelectedSiteCard({
     super.key,
     required this.site,
     required this.onClose,
     this.onOpen,
+    this.labels = InactiveSiteLabels.period,
   });
 
   static String _date(DateTime d) =>
@@ -121,7 +144,7 @@ class SelectedSiteCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     stats == null
-                        ? 'Aucun CRI sur la période'
+                        ? labels.card
                         : '${stats.totalInterventions} CRI · retours ${stats.tauxRecurrence.toStringAsFixed(0)} %'
                             '${stats.derniereIntervention != null ? ' · dernière le ${_date(stats.derniereIntervention!)}' : ''}',
                     style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
