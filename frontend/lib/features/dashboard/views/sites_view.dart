@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:novadis_cri/core/constants/permissions.dart';
 import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/core/theme/responsive.dart';
+import 'package:novadis_cri/features/auth/presentation/providers/permissions_provider.dart';
 import 'package:novadis_cri/features/dashboard/models/map_site.dart';
 import 'package:novadis_cri/features/dashboard/models/stats_query.dart';
 import 'package:novadis_cri/features/dashboard/providers/dashboard_providers.dart';
@@ -12,6 +14,7 @@ import 'package:novadis_cri/features/dashboard/widgets/site_stats_widgets.dart';
 import 'package:novadis_cri/features/dashboard/widgets/sites_map.dart';
 import 'package:novadis_cri/models/site_location.dart';
 import 'package:novadis_cri/models/site_stats.dart';
+import 'package:novadis_cri/services/stats_api_service.dart';
 
 enum _SitesDisplay { list, map }
 
@@ -51,6 +54,28 @@ class _SitesViewState extends ConsumerState<SitesView> {
 
   void _open(SiteStats site) => openSiteDashboard(context, site);
 
+  bool _geocoding = false;
+
+  /// Admin : géocode les sites en attente (référentiel + adresses de CRI), puis
+  /// recharge la carte et les stats.
+  Future<void> _geocode() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _geocoding = true);
+    try {
+      final summary = await ref.read(statsApiServiceProvider).geocodeSites();
+      ref.invalidate(sitesMapProvider);
+      ref.invalidate(siteStatsProvider);
+      messenger.showSnackBar(SnackBar(content: Text(summary.message)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Localisation impossible : ${DashboardErrorView.messageOf(e)}'),
+        backgroundColor: AppTheme.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _geocoding = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final query = widget.query;
@@ -73,6 +98,24 @@ class _SitesViewState extends ConsumerState<SitesView> {
                 ),
               ),
             ),
+            if (ref.watch(permissionsProvider).hasPermission(Permission.systemAdmin)) ...[
+              Tooltip(
+                message: 'Géocode les sites nouveaux ou déplacés et les adresses des CRI '
+                    '(Géoplateforme IGN)',
+                child: TextButton.icon(
+                  onPressed: _geocoding ? null : _geocode,
+                  icon: _geocoding
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.travel_explore_rounded, size: 18),
+                  label: Text(_geocoding ? 'Localisation…' : 'Localiser les sites'),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space8),
+            ],
             SegmentedButton<_SitesDisplay>(
               segments: const [
                 ButtonSegment(

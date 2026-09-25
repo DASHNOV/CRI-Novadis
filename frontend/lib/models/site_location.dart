@@ -34,6 +34,49 @@ class SiteLocation {
   }
 }
 
+/// Bilan de `POST /api/sites/geocode`.
+class GeocodingSummary {
+  final int traites;
+  final int localises;
+  final int aVerifier;
+  final int sansAdresse;
+  final int adressesCriTraitees;
+  final int adressesCriLocalisees;
+
+  const GeocodingSummary({
+    this.traites = 0,
+    this.localises = 0,
+    this.aVerifier = 0,
+    this.sansAdresse = 0,
+    this.adressesCriTraitees = 0,
+    this.adressesCriLocalisees = 0,
+  });
+
+  factory GeocodingSummary.fromJson(Map<String, dynamic> json) => GeocodingSummary(
+        traites: json['traites'] as int? ?? 0,
+        localises: json['localises'] as int? ?? 0,
+        aVerifier: json['aVerifier'] as int? ?? 0,
+        sansAdresse: json['sansAdresse'] as int? ?? 0,
+        adressesCriTraitees: json['adressesCriTraitees'] as int? ?? 0,
+        adressesCriLocalisees: json['adressesCriLocalisees'] as int? ?? 0,
+      );
+
+  /// Phrase affichée après la passe.
+  String get message {
+    if (traites == 0 && adressesCriTraitees == 0) {
+      return 'Rien à localiser : tout est déjà à jour.';
+    }
+    final parts = [
+      if (traites > 0) '$localises / $traites sites du référentiel localisés',
+      if (aVerifier > 0) '$aVerifier à vérifier',
+      if (sansAdresse > 0) '$sansAdresse sans adresse',
+      if (adressesCriTraitees > 0)
+        '$adressesCriLocalisees / $adressesCriTraitees adresses de CRI localisées',
+    ];
+    return parts.join(' · ');
+  }
+}
+
 /// Réponse de `GET /api/sites/map`.
 class SitesMapData {
   final List<SiteLocation> sites;
