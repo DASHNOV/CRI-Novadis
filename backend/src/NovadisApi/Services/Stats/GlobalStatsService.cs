@@ -17,9 +17,9 @@ public sealed class GlobalStatsService : IGlobalStatsService
         _context = context;
     }
 
-    public async Task<GlobalStatsDto> GetGlobalStatsAsync(int? periodDays, CancellationToken ct = default)
+    public async Task<GlobalStatsDto> GetGlobalStatsAsync(StatsFilter filter, CancellationToken ct = default)
     {
-        var baseQuery = FilterByPeriod(_context.CRIForms, periodDays);
+        var baseQuery = filter.Apply(_context.CRIForms);
 
         var total = await baseQuery.CountAsync(ct);
         var stats = new GlobalStatsDto
@@ -171,9 +171,9 @@ public sealed class GlobalStatsService : IGlobalStatsService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<SiteStatsDto>> GetStatsBySiteAsync(int? periodDays, CancellationToken ct = default)
+    public async Task<IReadOnlyList<SiteStatsDto>> GetStatsBySiteAsync(StatsFilter filter, CancellationToken ct = default)
     {
-        var baseQuery = FilterByPeriod(_context.CRIForms, periodDays);
+        var baseQuery = filter.Apply(_context.CRIForms);
 
         var criList = await baseQuery
             .Include(c => c.Site)
@@ -240,9 +240,9 @@ public sealed class GlobalStatsService : IGlobalStatsService
             .ToList();
     }
 
-    public async Task<IReadOnlyList<TechnicianDetailedStatsDto>> GetStatsByTechnicianAsync(int? periodDays, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TechnicianDetailedStatsDto>> GetStatsByTechnicianAsync(StatsFilter filter, CancellationToken ct = default)
     {
-        var baseQuery = FilterByPeriod(_context.CRIForms, periodDays);
+        var baseQuery = filter.Apply(_context.CRIForms);
 
         var criList = await baseQuery
             .Include(c => c.Technician)
@@ -320,9 +320,9 @@ public sealed class GlobalStatsService : IGlobalStatsService
             .ToList();
     }
 
-    public async Task<DistributionStatsDto> GetDistributionStatsAsync(int? periodDays, CancellationToken ct = default)
+    public async Task<DistributionStatsDto> GetDistributionStatsAsync(StatsFilter filter, CancellationToken ct = default)
     {
-        var baseQuery = FilterByPeriod(_context.CRIForms, periodDays);
+        var baseQuery = filter.Apply(_context.CRIForms);
 
         var criList = await baseQuery
             .Include(c => c.Technician)
@@ -405,13 +405,94 @@ public sealed class GlobalStatsService : IGlobalStatsService
         return result;
     }
 
-    private static IQueryable<CRIForm> FilterByPeriod(IQueryable<CRIForm> query, int? periodDays)
+    /// <summary>Une courbe couvre au moins une semaine : un seul point (« Jour ») ne montre rien.</summary>
+    private const int MinEvolutionDays = 7;
+
+    public async Task<EvolutionDto> GetEvolutionAsync(StatsFilter filter, CancellationToken ct = default)
     {
-        if (periodDays.HasValue && periodDays.Value > 0)
+        var end = filter.EffectiveTo();
+        var start = filter.From;
+        if (start is null)
         {
-            var startDate = DateTime.UtcNow.AddDays(-periodDays.Value);
-            query = query.Where(c => c.InterventionDate >= startDate);
+            // Sans période : depuis la première intervention du périmètre.
+            var first = await filter.Apply(_context.CRIForms).MinAsync(c => (DateTime?)c.InterventionDate, ct);
+            if (first is null) return new EvolutionDto();
+            start = first.Value.Date;
         }
-        return query;
+        if ((end - start.Value).TotalDays < MinEvolutionDays)
+            start = end.AddDays(-MinEvolutionDays);
+
+        var granularity = GranularityFor(end - start.Value);
+        var rows = await (filter with { From = start, To = end }).Apply(_context.CRIForms)
+            .Select(c => new { c.InterventionDate, c.InterventionType, c.ResolutionStatus })
+            .ToListAsync(ct);
+        var byBucket = rows.ToLookup(r => BucketStart(r.InterventionDate, granularity));
+
+        var points = new List<EvolutionPointDto>();
+        for (var bucket = BucketStart(start.Value, granularity); bucket < end; bucket = NextBucket(bucket, granularity))
+        {
+            var inBucket = byBucket[bucket].ToList();
+            points.Add(new EvolutionPointDto
+            {
+                Debut = bucket,
+                Label = granularity == "month"
+                    ? $"{MonthNames[bucket.Month]} {bucket.Year % 100:00}"
+                    : $"{bucket.Day:00}/{bucket.Month:00}",
+                Total = inBucket.Count,
+                Services = inBucket.Count(r => r.InterventionType == "Service"),
+                Projets = inBucket.Count(r => r.InterventionType == "Project"),
+                Resolu = inBucket.Count(r => r.ResolutionStatus == "resolu"),
+            });
+        }
+
+        return new EvolutionDto { Granularity = granularity, Points = points };
+    }
+
+    /// <summary>Jour jusqu'à un mois, semaine jusqu'à un trimestre, mois au-delà.</summary>
+    internal static string GranularityFor(TimeSpan span) => span.TotalDays switch
+    {
+        <= 31 => "day",
+        <= 92 => "week",
+        _ => "month",
+    };
+
+    private static DateTime BucketStart(DateTime date, string granularity) => granularity switch
+    {
+        "week" => date.Date.AddDays(-(((int)date.DayOfWeek + 6) % 7)),   // lundi
+        "month" => new DateTime(date.Year, date.Month, 1),
+        _ => date.Date,
+    };
+
+    private static DateTime NextBucket(DateTime bucket, string granularity) => granularity switch
+    {
+        "week" => bucket.AddDays(7),
+        "month" => bucket.AddMonths(1),
+        _ => bucket.AddDays(1),
+    };
+
+    public async Task<IReadOnlyList<RecentInterventionDto>> GetRecentInterventionsAsync(
+        StatsFilter filter, int limit, CancellationToken ct = default)
+    {
+        return await filter.Apply(_context.CRIForms.AsNoTracking())
+            .OrderByDescending(c => c.InterventionDate)
+            .ThenByDescending(c => c.CreatedAt)
+            .Take(Math.Clamp(limit, 1, 100))
+            .Select(c => new RecentInterventionDto
+            {
+                Id = c.Id,
+                InterventionType = c.InterventionType,
+                Category = c.Category,
+                InterventionDate = c.InterventionDate,
+                TechnicianId = c.TechnicianId,
+                TechnicienNom = c.Technician != null
+                    ? ((c.Technician.FirstName ?? "") + " " + (c.Technician.LastName ?? "")).Trim()
+                    : "",
+                SiteNom = c.Site != null ? c.Site.NomDuSite : c.ClientSite,
+                ClientNom = c.Client != null ? c.Client.RaisonSociale : c.ClientName,
+                ResolutionStatus = c.ResolutionStatus,
+                ProjectStatus = c.ProjectStatus,
+                DureeMinutes = c.DureeMinutes,
+            })
+            .ToListAsync(ct);
     }
 }

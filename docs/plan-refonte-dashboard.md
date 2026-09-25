@@ -79,14 +79,17 @@ Branche : `fix/dashboard-kpis`
 ### Phase 2 — Tout passer par l'API
 Branche : `feat/dashboard-api`
 
-- [ ] Back : endpoint évolution temporelle (`GET /api/global/stats/evolution?period=&granularity=`)
-- [ ] Back : endpoint interventions récentes (`GET /api/global/stats/recent?limit=`)
-- [ ] Back : stats du technicien connecté filtrées par période (vue non-admin)
-- [ ] Page technicien (admin) : identifiée par l'ID (GUID) du technicien, données API
-- [ ] Back : paramètres `from` / `to` en plus de `period` (plage personnalisée)
-- [ ] Front : remplacer `DashboardRepository` (calcul local) par des providers API
-- [ ] Front : supprimer le double appel `getAllCris()`
-- [ ] Mettre à jour `docs/api-summary.md`
+- [x] Back : filtre commun `StatsFilter` (période alignée sur minuit, `from`/`to`, `technicienId`, `site`) sur tous les endpoints de stats
+- [x] Back : `GET /api/global/stats/evolution` — granularité choisie par l'API (jour ≤ 31 j, semaine ≤ 92 j, mois), 7 jours minimum
+- [x] Back : `GET /api/global/stats/recent?limit=`
+- [x] Back : `/api/personal/dashboard/{stats,by-site,evolution,recent}` — mêmes calculs, périmètre forcé sur l'utilisateur
+- [x] Back : paramètres `from` / `to` (plage personnalisée, `to` inclus)
+- [x] Page technicien (admin) : identifiée par l'ID (GUID), données API ; page site : données API (nom du site)
+- [x] Front : `DashboardRepository` et `KpiCalculatorService` supprimés, providers API `family` sur `StatsQuery` → fin du double `getAllCris()`
+- [x] Orphelins supprimés (accord du 2026-09-25) : `technician_statistics_page`, `site_details_page`, `dashboard_screen`, `type_distribution_chart_widget`, `top_sites_list_widget`, `technician_kpi_cards_widget`, `skills_radar_chart_widget`, `workload_curve_chart_widget` ; `intervention_trend_chart_widget` devenu inutile
+- [x] Tests : `DashboardEndpointsTests` (16), `StatsSqlTranslationTests` (7 — traduction SQL Npgsql, que la base InMemory ne vérifie pas), `dashboard_api_models_test.dart` (8)
+- [x] Docs : `api-summary.md`, `architecture.md`
+- Effet de bord assumé : le dashboard technicien ne compte plus les CRI non synchronisés (il lisait la base locale). KPI technicien alignés sur ceux de l'équipe (Interventions, Résolues, Durée moy., Récurrences)
 
 ### Phase 3 — Ergonomie
 Branche : `feat/dashboard-ux`

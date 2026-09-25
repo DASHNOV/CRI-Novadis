@@ -56,7 +56,7 @@ NovadisApi/
 │   ├── Email/                     # EmailService (SMTP)
 │   ├── Export/                    # XlsxExportService
 │   ├── Storage/                   # LocalFileObjectStorage (MinIO-ready)
-│   ├── Stats/                     # GlobalStatsService
+│   ├── Stats/                     # GlobalStatsService, StatsFilter (période / technicien / site)
 │   └── Maintenance/               # DataRetentionService (purge RGPD)
 ├── Data/
 │   ├── NovadisDbContext.cs
@@ -114,6 +114,7 @@ Désactivé en environnement `Test`.
 | `CRIController` | `api/cri` | Authentifié ; écritures → `CriCreate` ; lecture d'autrui → `CriReadAll` ; brouillon / suppression d'autrui → `CriManageAny` |
 | `GlobalStatsController` | `api/global` | `GlobalStats` |
 | `PersonalStatsController` | `api/personal` | `PersonalStats` |
+| `PersonalDashboardController` | `api/personal/dashboard` | `PersonalStats` |
 | `ExportController` | `api/export` | Authentifié ; portée « global » → `ExportAll` |
 | `ExportedDocumentsController` | `api/exported-documents` | Authentifié ; docs d'autrui : lecture → `DocumentsReadAll`, gestion → `DocumentsManageAny` |
 | `SitesController` | `api/sites` | Authentifié ; `POST /import` → `SystemAdmin` |
@@ -212,7 +213,7 @@ lib/
 ├── features/
 │   ├── auth/                      # LoginScreen, OtpVerificationScreen
 │   ├── home/                      # HomePage
-│   ├── dashboard/                 # MainDashboard, SiteDashboard, TechnicianDashboard
+│   ├── dashboard/                 # MainDashboard, SiteDashboard, TechnicianDashboard — données 100 % API (aucun calcul local)
 │   ├── cri_form/                  # Saisie CRI (Projet + Service)
 │   ├── history/                   # Historique (perso + global) — carte CRI partagée : widgets/cri_card.dart
 │   ├── documents/                 # Exports historique + sélection + PdfViewerPage (viewer in-app)
@@ -291,9 +292,9 @@ lib/
 | `/login` | LoginScreen | Public |
 | `/verify-otp` | OtpVerificationScreen | Public |
 | `/home` | RoleHomeScreen (Technician → TechnicianMainScreen ; Admin / Supervisor → AdminMainScreen ; inconnu → « Rôle non pris en charge ») | Authentifié |
-| `/dashboard` | MainDashboardPage (mode global si `GlobalStats`) | Authentifié |
-| `/dashboard/site/:siteId` | SiteDashboardPage | `GlobalStats` |
-| `/dashboard/technician/:techId` | TechnicianDashboardPage | `GlobalStats` |
+| `/dashboard` | MainDashboardPage : équipe (`/api/global`) si `GlobalStats`, sinon ses CRI (`/api/personal/dashboard`) | Authentifié |
+| `/dashboard/site/:siteId` | SiteDashboardPage — `siteId` = nom du site | `GlobalStats` |
+| `/dashboard/technician/:techId` | TechnicianDashboardPage — `techId` = ID utilisateur (GUID) | `GlobalStats` |
 | `/cri-form` | CriFormScreen (choix type) | `CriCreate` |
 | `/cri/new/projet` | CriProjetFormPage | `CriCreate` |
 | `/cri/new/service` | CriServiceFormPage | `CriCreate` |
