@@ -137,7 +137,8 @@ duration?, status, data?, technicianSignature?, clientSignature?
 }
 ```
 - `periodePrecedente` : `{ totalInterventions, totalResolu, dureeMoyenneMinutes, totalRecurrenceRequise }` sur la période précédente de même durée (tendances) ; `null` sans période.
-- `SiteStatsDto` (`/stats/by-site`) : `latitude`, `longitude`, `geocodagePrecision` (`housenumber` / `street` / `locality` / `municipality`) — `null` pour un site en saisie libre, non géocodé ou à vérifier.
+- `SiteStatsDto` (`/stats/by-site`) : `latitude`, `longitude`, `geocodagePrecision` (`housenumber` / `street` / `locality` / `municipality`) et `localisationSource` (`referentiel` / `cri` : adresse saisie dans le CRI le plus récent, pour un site hors référentiel) — `null` si non géocodé ou à vérifier.
+- Sites regroupés **sans tenir compte de la casse ni des espaces en bord** (« Test » = « test ») ; nom affiché = graphie la plus fréquente ; le filtre `site=` suit la même règle.
 - `totalInterventions` : CRI de la période demandée. `totalCeMois` = même valeur, ancien nom trompeur conservé pour les APK installés (ne plus l'utiliser).
 
 ---
@@ -186,7 +187,7 @@ duration?, status, data?, technicianSignature?, clientSignature?
 | GET | `/search?q=` | ✅ | Recherche sites NovaDIS (min 2 chars, insensible accents/casse) |
 | GET | `/` | ✅ | Liste paginée des sites (`?page=1&pageSize=50`) |
 | POST | `/import` | `SystemAdmin` | Importe les sites depuis le CSV interne, puis géocode les sites nouveaux ou dont l'adresse a changé (échec du géocodage sans effet sur l'import) |
-| POST | `/geocode?force=false` | `SystemAdmin` | Géocode les sites en attente (`GeocodeLe` nul), ou tous avec `force=true` ; jamais les coordonnées manuelles. Réponse `{ traites, localises, aVerifier, sansAdresse }` ; **502** si la Géoplateforme est injoignable |
+| POST | `/geocode?force=false` | `SystemAdmin` | Géocode les sites en attente (`GeocodeLe` nul), ou tous avec `force=true` ; jamais les coordonnées manuelles. Géocode aussi les adresses des CRI hors référentiel absentes du cache `AdressesGeocodees`. Réponse `{ traites, localises, aVerifier, sansAdresse, adressesCriTraitees, adressesCriLocalisees }` ; **502** si la Géoplateforme est injoignable |
 | GET | `/summary?siteName=` | ✅ | Résumé d'un site (historique, alertes, recommandations) |
 
 **Réponse `/search`** (liste de `SiteDto`)

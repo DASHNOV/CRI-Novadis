@@ -60,8 +60,10 @@ public sealed record StatsFilter
             query = query.Where(c => c.TechnicianId == technicianId);
         if (!string.IsNullOrWhiteSpace(Site))
         {
-            var site = Site;
-            query = query.Where(c => (c.Site != null ? c.Site.NomDuSite : c.ClientSite) == site);
+            // Même clé que SiteNames.Key : casse et espaces en bord ignorés.
+            var site = SiteNames.Key(Site);
+            query = query.Where(c =>
+                ((c.Site != null ? c.Site.NomDuSite : c.ClientSite) ?? "").Trim().ToLower() == site);
         }
         return query;
     }

@@ -4,14 +4,20 @@ using NovadisApi.Models;
 
 namespace NovadisApi.Services.Geocoding;
 
-/// <summary>Bilan d'une passe de géocodage.</summary>
-public sealed record GeocodingSummary(int Traites, int Localises, int AVerifier, int SansAdresse);
+/// <summary>
+/// Bilan d'une passe de géocodage : sites du référentiel, puis adresses des CRI
+/// hors référentiel (repli pour la carte).
+/// </summary>
+public sealed record GeocodingSummary(
+    int Traites, int Localises, int AVerifier, int SansAdresse,
+    int AdressesCriTraitees = 0, int AdressesCriLocalisees = 0);
 
 public interface ISiteGeocodingService
 {
     /// <summary>
     /// Géocode les sites à traiter (<see cref="Site.GeocodeLe"/> nul) ou tous avec
     /// <paramref name="force"/>. Les coordonnées manuelles ne sont jamais touchées.
+    /// Géocode aussi les adresses des CRI sans site du référentiel absentes du cache.
     /// </summary>
     Task<GeocodingSummary> GeocodePendingAsync(bool force = false, CancellationToken ct = default);
 
@@ -84,10 +90,66 @@ public sealed class SiteGeocodingService : ISiteGeocodingService
             }
         }
 
+        var (addressesDone, addressesLocated) = await GeocodeCriAddressesAsync(force, now, ct);
+
         await _context.SaveChangesAsync(ct);
-        var summary = new GeocodingSummary(sites.Count, located, toCheck, withoutAddress.Count);
+        var summary = new GeocodingSummary(
+            sites.Count, located, toCheck, withoutAddress.Count, addressesDone, addressesLocated);
         _logger.LogInformation("Géocodage des sites : {Summary}", summary);
         return summary;
+    }
+
+    /// <summary>
+    /// Adresses des CRI hors référentiel (saisie libre du site) : une entrée de cache
+    /// par adresse distincte, pour que la carte puisse les placer sans appel externe.
+    /// </summary>
+    private async Task<(int Done, int Located)> GeocodeCriAddressesAsync(
+        bool force, DateTime now, CancellationToken ct)
+    {
+        var rows = await _context.CRIForms
+            .Where(c => c.SiteID == null && c.ClientSite != null && c.ClientSite != "")
+            .Select(c => new { c.ClientAddress, c.CodePostal, c.Ville })
+            .Distinct()
+            .ToListAsync(ct);
+        var keys = rows
+            .Select(r => AddressKey.From(r.ClientAddress, r.CodePostal, r.Ville))
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        if (keys.Count == 0) return (0, 0);
+
+        var cached = await _context.AdressesGeocodees
+            .Where(a => keys.Contains(a.Cle))
+            .ToDictionaryAsync(a => a.Cle, ct);
+        var toGeocode = force ? keys : keys.Where(k => !cached.ContainsKey(k)).ToList();
+        if (toGeocode.Count == 0) return (0, 0);
+
+        var results = (await _geocoder.GeocodeAsync(
+                toGeocode.Select(k =>
+                {
+                    var (adresse, cp, ville) = AddressKey.Split(k);
+                    return new GeocodingRequest(k, adresse, cp, ville);
+                }).ToList(), ct))
+            .ToDictionary(r => r.Id);
+
+        var located = 0;
+        foreach (var key in toGeocode)
+        {
+            results.TryGetValue(key, out var result);
+            var ok = result is { Latitude: not null, Longitude: not null, Score: >= MinScore };
+            if (ok) located++;
+            if (!cached.TryGetValue(key, out var entry))
+            {
+                entry = new AdresseGeocodee { Cle = key };
+                _context.AdressesGeocodees.Add(entry);
+            }
+            entry.Latitude = ok ? result!.Latitude : null;
+            entry.Longitude = ok ? result!.Longitude : null;
+            entry.Score = result?.Score;
+            entry.Precision = result?.Type;
+            entry.GeocodeLe = now;
+        }
+        return (toGeocode.Count, located);
     }
 
     public void ResetIfAddressChanged(Site site, string? adresse, string? codePostal, string? ville)

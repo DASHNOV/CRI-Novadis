@@ -257,7 +257,14 @@ class _SelectedSiteCard extends StatelessWidget {
                     '${site.derniereIntervention != null ? ' · dernière le ${_date(site.derniereIntervention!)}' : ''}',
                     style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                   ),
-                  if (site.isApproximateLocation)
+                  if (site.isLocatedFromCri)
+                    Text(
+                      site.isApproximateLocation
+                          ? 'Position approximative : commune saisie dans le CRI'
+                          : 'Position d\'après l\'adresse saisie dans le CRI',
+                      style: muted,
+                    )
+                  else if (site.isApproximateLocation)
                     Text('Position approximative (centre de la commune)', style: muted),
                 ],
               ),

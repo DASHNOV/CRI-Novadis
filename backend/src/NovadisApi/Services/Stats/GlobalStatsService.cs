@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NovadisApi.Data;
 using NovadisApi.Models;
 using NovadisApi.Models.DTOs;
+using NovadisApi.Services.Geocoding;
 
 namespace NovadisApi.Services.Stats;
 
@@ -201,6 +202,9 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 Latitude = c.Site != null ? c.Site.Latitude : null,
                 Longitude = c.Site != null ? c.Site.Longitude : null,
                 GeocodagePrecision = c.Site != null ? c.Site.GeocodagePrecision : null,
+                c.ClientAddress,
+                c.CodePostal,
+                c.Ville,
                 ClientNom = c.Client != null ? c.Client.RaisonSociale : c.ClientName,
                 c.InterventionType,
                 c.Category,
@@ -212,8 +216,27 @@ public sealed class GlobalStatsService : IGlobalStatsService
             })
             .ToListAsync(ct);
 
+        var displayNames = SiteNames.DisplayNames(criList.Select(c => c.SiteNom));
+
+        // Repli carte : sites sans coordonnées du référentiel → adresse du CRI le plus
+        // récent, lue dans le cache (rempli par POST /api/sites/geocode).
+        var fallbackKeys = criList
+            .GroupBy(c => SiteNames.Key(c.SiteNom))
+            .Where(g => g.All(c => c.Latitude == null))
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(c => c.InterventionDate)
+                    .Select(c => AddressKey.From(c.ClientAddress, c.CodePostal, c.Ville))
+                    .FirstOrDefault(k => k != null));
+        var wanted = fallbackKeys.Values.OfType<string>().Distinct().ToList();
+        var cache = wanted.Count == 0
+            ? new Dictionary<string, AdresseGeocodee>()
+            : await _context.AdressesGeocodees
+                .Where(a => wanted.Contains(a.Cle) && a.Latitude != null)
+                .ToDictionaryAsync(a => a.Cle, ct);
+
         return criList
-            .GroupBy(c => c.SiteNom)
+            .GroupBy(c => SiteNames.Key(c.SiteNom))
             .Select(g =>
             {
                 var total = g.Count();
@@ -232,10 +255,15 @@ public sealed class GlobalStatsService : IGlobalStatsService
                     .GroupBy(c => c.Category)
                     .ToDictionary(cg => cg.Key!, cg => cg.Count());
 
+                var referentiel = g.FirstOrDefault(c => c.Latitude != null);
+                AdresseGeocodee? fromCri = null;
+                if (referentiel == null && fallbackKeys.GetValueOrDefault(g.Key) is { } addressKey)
+                    cache.TryGetValue(addressKey, out fromCri);
+
                 return new SiteStatsDto
                 {
-                    SiteID = g.First().SiteID,
-                    SiteNom = g.Key,
+                    SiteID = g.FirstOrDefault(c => c.SiteID != null)?.SiteID,
+                    SiteNom = displayNames[g.Key],
                     ClientNom = g.First().ClientNom,
                     Ville = g.First().SiteVille,
                     TotalInterventions = total,
@@ -252,10 +280,12 @@ public sealed class GlobalStatsService : IGlobalStatsService
                     DerniereIntervention = g.Max(c => c.InterventionDate),
                     TechniciensDistincts = g.Select(c => c.TechnicianId).Distinct().Count(),
                     RepartitionParCategorie = repartitionCat.Count > 0 ? repartitionCat : null,
-                    // Le premier CRI rattaché au site normalisé porte ses coordonnées.
-                    Latitude = g.FirstOrDefault(c => c.Latitude != null)?.Latitude,
-                    Longitude = g.FirstOrDefault(c => c.Latitude != null)?.Longitude,
-                    GeocodagePrecision = g.FirstOrDefault(c => c.Latitude != null)?.GeocodagePrecision,
+                    // Le premier CRI rattaché au site normalisé porte ses coordonnées ;
+                    // sinon l'adresse saisie dans le CRI.
+                    Latitude = referentiel?.Latitude ?? fromCri?.Latitude,
+                    Longitude = referentiel?.Longitude ?? fromCri?.Longitude,
+                    GeocodagePrecision = referentiel?.GeocodagePrecision ?? fromCri?.Precision,
+                    LocalisationSource = referentiel != null ? "referentiel" : fromCri != null ? "cri" : null,
                 };
             })
             .OrderByDescending(s => s.TotalInterventions)
@@ -284,6 +314,8 @@ public sealed class GlobalStatsService : IGlobalStatsService
             })
             .ToListAsync(ct);
 
+        var siteNames = SiteNames.DisplayNames(criList.Select(c => c.SiteNom));
+
         return criList
             .GroupBy(c => c.TechnicianId)
             .Select(g =>
@@ -297,11 +329,11 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 var totalHeures = durees.Sum() / 60.0;
 
                 var topSites = g
-                    .Where(c => !string.IsNullOrEmpty(c.SiteNom))
-                    .GroupBy(c => c.SiteNom)
+                    .Where(c => !string.IsNullOrWhiteSpace(c.SiteNom))
+                    .GroupBy(c => SiteNames.Key(c.SiteNom))
                     .OrderByDescending(sg => sg.Count())
                     .Take(5)
-                    .Select(sg => sg.Key)
+                    .Select(sg => siteNames[sg.Key])
                     .ToList();
 
                 var repartitionType = new Dictionary<string, int>();
@@ -324,7 +356,8 @@ public sealed class GlobalStatsService : IGlobalStatsService
                     Prenom = first.TechPrenom,
                     Nom = first.TechNom,
                     TotalInterventions = total,
-                    SitesDistincts = g.Where(c => !string.IsNullOrEmpty(c.SiteNom)).Select(c => c.SiteNom).Distinct().Count(),
+                    SitesDistincts = g.Where(c => !string.IsNullOrWhiteSpace(c.SiteNom))
+                        .Select(c => SiteNames.Key(c.SiteNom)).Distinct().Count(),
                     ClientsDistincts = g.Where(c => !string.IsNullOrEmpty(c.ClientNom)).Select(c => c.ClientNom).Distinct().Count(),
                     DureeMoyenneMinutes = durees.Count > 0 ? Math.Round(durees.Average(), 1) : null,
                     TotalHeures = Math.Round(totalHeures, 1),
@@ -350,7 +383,7 @@ public sealed class GlobalStatsService : IGlobalStatsService
             .Include(c => c.Technician)
             .Select(c => new
             {
-                SiteNom = c.ClientSite ?? "(non renseigné)",
+                SiteNom = c.ClientSite != null && c.ClientSite.Trim() != "" ? c.ClientSite : "(non renseigné)",
                 c.Category,
                 c.InterventionType,
                 c.ResolutionStatus,
@@ -362,6 +395,12 @@ public sealed class GlobalStatsService : IGlobalStatsService
                 c.InterventionDate
             })
             .ToListAsync(ct);
+
+        // Sites regroupés comme dans les stats par site (casse, espaces).
+        var names = SiteNames.DisplayNames(criList.Select(c => c.SiteNom));
+        criList = criList
+            .Select(c => c with { SiteNom = names.GetValueOrDefault(SiteNames.Key(c.SiteNom), c.SiteNom) })
+            .ToList();
 
         var result = new DistributionStatsDto
         {

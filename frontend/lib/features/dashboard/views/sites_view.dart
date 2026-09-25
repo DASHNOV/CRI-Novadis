@@ -200,7 +200,8 @@ class _UnlocatedSites extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: AppTheme.textPrimary),
           ),
           subtitle: Text(
-            'Site saisi librement dans le CRI, ou adresse du référentiel à compléter / vérifier.',
+            'Adresse absente, non reconnue, ou pas encore géocodée '
+            '(POST /api/sites/geocode, puis à chaque import des sites).',
             style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
           ),
           children: sites

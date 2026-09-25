@@ -107,21 +107,34 @@ class _AlertsCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                Text(
-                  'Non résolus depuis',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
-                ),
-                const SizedBox(width: AppTheme.space4),
-                DropdownButton<int>(
-                  value: alerts.joursSansResolution,
-                  underline: const SizedBox.shrink(),
-                  isDense: true,
-                  items: {...DashboardAlertsBanner.staleDayChoices, alerts.joursSansResolution}
-                      .map((d) => DropdownMenuItem(value: d, child: Text('$d j')))
+                // Menu plutôt qu'un DropdownButton dense : celui-ci tronquait « 14 j ».
+                PopupMenuButton<int>(
+                  tooltip: 'Ancienneté des services non résolus',
+                  initialValue: alerts.joursSansResolution,
+                  onSelected: (days) =>
+                      ref.read(alertStaleDaysProvider.notifier).state = days,
+                  itemBuilder: (context) => {
+                    ...DashboardAlertsBanner.staleDayChoices,
+                    alerts.joursSansResolution,
+                  }
+                      .map((d) => PopupMenuItem(value: d, child: Text('$d jours')))
                       .toList(),
-                  onChanged: (days) {
-                    if (days != null) ref.read(alertStaleDaysProvider.notifier).state = days;
-                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.space8,
+                      vertical: AppTheme.space4,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Non résolus depuis ${alerts.joursSansResolution} j',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        ),
+                        Icon(Icons.arrow_drop_down, size: 18, color: AppTheme.textSecondary),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

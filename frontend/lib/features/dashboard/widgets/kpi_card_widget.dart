@@ -4,6 +4,14 @@ import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/core/theme/responsive.dart';
 
 /// Widget de carte KPI – design moderne inspiré Linear/Stripe
+/// Variation affichée à côté de la flèche : valeur absolue, virgule décimale,
+/// entier au-delà de 100 % (« 367 % » plutôt que « 366.7% »).
+String formatTrendPercent(double value) {
+  final abs = value.abs();
+  final text = abs >= 100 ? abs.toStringAsFixed(0) : abs.toStringAsFixed(1);
+  return '${text.replaceAll('.', ',')} %';
+}
+
 class KpiCard extends StatefulWidget {
   final String title;
   final String value;
@@ -215,7 +223,7 @@ class _KpiCardState extends State<KpiCard> {
           Icon(iconData, size: 12, color: color),
           const SizedBox(width: 2),
           Text(
-            '${widget.trendValue!.abs().toStringAsFixed(1)}%',
+            formatTrendPercent(widget.trendValue!),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,

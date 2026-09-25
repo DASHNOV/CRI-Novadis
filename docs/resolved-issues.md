@@ -18,6 +18,12 @@
 
 <!-- Ajouter les incidents résolus ci-dessous, du plus récent au plus ancien. -->
 
+## [2026-09-25] Dashboard : « Test » et « test » comptés comme deux sites, carte vide pour les sites saisis librement
+- **Symptôme** : onglet Sites avec « Test » et « test » séparés ; carte des sites sans aucun marqueur, « 10 sites non localisés ».
+- **Cause** : les stats regroupaient les sites sur le texte exact de `ClientSite`. Un CRI n'est rattaché au référentiel (`SiteID`) que si son nom est **identique** à `Sites.NomDuSite` (`CRIController.ResolveRelations`) : les sites saisis librement n'ont ni `SiteID` ni coordonnées.
+- **Correctif** : `SiteNames.Key` (trim + minuscules) pour tous les regroupements, et la même règle en SQL dans `StatsFilter` (`lower(btrim(...))`) ; repli de localisation par l'adresse du CRI via le cache `AdressesGeocodees` (migration CLI `AddAdressesGeocodees`). Tests : `SiteGroupingTests`.
+- **Prévention** : toute agrégation par site passe par `SiteNames` — jamais `GroupBy(c => c.ClientSite)` brut. Jamais d'appel au géocodeur à la lecture des stats : uniquement via `POST /api/sites/geocode` ou l'import.
+
 ## [2026-09-25] Dashboard : KPI hors période, bornes exclusives, courbe technicien toujours à 0
 - **Symptôme** : vue technicien du dashboard — « Réalisées » pouvait dépasser « Interventions » ; « Prévues » toujours à 0 ; courbe d'évolution figée sur 6 mois quel que soit le filtre ; interventions du 1er du mois absentes de la courbe ; page technicien (admin) : courbe hebdomadaire toujours plate, email inventé (`prenom.nom@novadis.fr`), ponctualité fixe à 90 %.
 - **Cause** :

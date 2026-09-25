@@ -25,6 +25,9 @@ class SiteStats {
   /// `housenumber`, `street`, `locality`, `municipality` (centre de la commune).
   final String? geocodagePrecision;
 
+  /// `referentiel` (site normalisé) ou `cri` (adresse saisie dans le CRI).
+  final String? localisationSource;
+
   const SiteStats({
     this.siteID,
     required this.siteNom,
@@ -46,6 +49,7 @@ class SiteStats {
     this.latitude,
     this.longitude,
     this.geocodagePrecision,
+    this.localisationSource,
   });
 
   factory SiteStats.fromJson(Map<String, dynamic> json) {
@@ -72,6 +76,7 @@ class SiteStats {
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       geocodagePrecision: json['geocodagePrecision'] as String?,
+      localisationSource: json['localisationSource'] as String?,
     );
   }
 
@@ -87,6 +92,9 @@ class SiteStats {
 
   /// Position approximative : seule la commune a été reconnue.
   bool get isApproximateLocation => geocodagePrecision == 'municipality';
+
+  /// Placé d'après l'adresse saisie dans un CRI (site hors référentiel).
+  bool get isLocatedFromCri => localisationSource == 'cri';
 
   String get dureeMoyenneFormatee {
     if (dureeMoyenneMinutes == null) return '-';

@@ -4,6 +4,13 @@ import 'package:novadis_cri/core/theme/app_theme.dart';
 import 'package:novadis_cri/models/dashboard_evolution.dart';
 import 'package:novadis_cri/features/dashboard/config/chart_config.dart';
 
+/// Pas entre deux étiquettes de l'axe des X : au plus ~6 étiquettes.
+int labelStep(int points) => points > 7 ? (points / 6).ceil() : 1;
+
+/// Étiquette affichée si elle tombe sur le pas, en partant du dernier point.
+bool showLabelAt(int index, int points, int step) =>
+    index >= 0 && index < points && (points - 1 - index) % step == 0;
+
 /// Widget pour le graphique d'évolution temporelle
 class TimeEvolutionChartWidget extends StatefulWidget {
   final List<EvolutionPoint> data;
@@ -132,10 +139,10 @@ class _TimeEvolutionChartWidgetState extends State<TimeEvolutionChartWidget>
     if (maxY < 4) maxY = 4;
     maxY = maxY * 1.2;
 
-    // Une étiquette sur n : 30 jours ne tiennent pas sous l'axe.
-    final double xInterval = widget.data.length > 7
-        ? (widget.data.length / 6).ceilToDouble()
-        : 1;
+    // Une étiquette sur n, comptée depuis le dernier point : la plus récente
+    // est toujours affichée, et fl_chart n'ajoute plus son étiquette de bout
+    // d'axe collée à l'avant-dernière (« 14/09 21/09 »).
+    final step = labelStep(widget.data.length);
 
     return LineChartData(
       gridData: FlGridData(
@@ -154,10 +161,11 @@ class _TimeEvolutionChartWidgetState extends State<TimeEvolutionChartWidget>
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
-            interval: xInterval,
+            interval: 1,
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
-              if (index >= 0 && index < widget.data.length) {
+              if (value == index &&
+                  showLabelAt(index, widget.data.length, step)) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(

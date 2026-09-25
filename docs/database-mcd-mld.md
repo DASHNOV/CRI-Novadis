@@ -208,6 +208,9 @@ Sites(__Numero__: int, NomDuSite, Adresse, Ville, CodePostal,
       Pays, ResponsableDorigine, DateDeCreation,
       Latitude, Longitude, GeocodageScore, GeocodagePrecision, GeocodeLe, CoordonneesManuelles)
 
+AdressesGeocodees(__Cle__: varchar(800), Latitude, Longitude, Score, Precision, GeocodeLe)
+  -- cache de géocodage des adresses de CRI hors référentiel ; Cle = "adresse|cp|ville" normalisés (AddressKey)
+
 ClientsNormalises(__Id__: uuid, RaisonSociale, Contact, Telephone,
       Email, Adresse, CodePostal, Ville, Pays, Actif,
       CreatedAt, UpdatedAt)

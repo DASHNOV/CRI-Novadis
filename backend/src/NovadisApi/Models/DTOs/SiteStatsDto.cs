@@ -29,5 +29,11 @@ namespace NovadisApi.Models.DTOs
 
         /// <summary><c>housenumber</c>, <c>street</c>, <c>locality</c>, <c>municipality</c> (centre de la commune).</summary>
         public string? GeocodagePrecision { get; set; }
+
+        /// <summary>
+        /// Origine des coordonnées : <c>referentiel</c> (site normalisé) ou <c>cri</c>
+        /// (adresse saisie dans le CRI, site hors référentiel) ; <c>null</c> sans coordonnées.
+        /// </summary>
+        public string? LocalisationSource { get; set; }
     }
 }
