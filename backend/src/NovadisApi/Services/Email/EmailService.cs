@@ -156,6 +156,11 @@ namespace NovadisApi.Services.Email
                 if (string.IsNullOrEmpty(tenantId) || string.IsNullOrEmpty(clientId)
                     || string.IsNullOrEmpty(clientSecret) || string.IsNullOrEmpty(fromEmail))
                 {
+                    // Hors développement : ne jamais écrire le corps (code OTP, lien) dans les
+                    // logs ni simuler un envoi réussi — l'échec doit remonter à l'appelant.
+                    if (!_env.IsDevelopment())
+                        throw new InvalidOperationException("Microsoft Graph n'est pas configuré : envoi d'e-mail impossible.");
+
                     _logger.LogWarning("⚠️ Microsoft Graph not configured. Mocking email send to {Email}", toEmail);
                     _logger.LogInformation("📧 Email Subject: {Subject}", subject);
                     _logger.LogInformation("📝 Email Body: {Body}", htmlBody);

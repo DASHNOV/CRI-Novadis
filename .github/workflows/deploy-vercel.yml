@@ -11,6 +11,10 @@ on:
       - "build_vercel.sh"
       - ".github/workflows/deploy-vercel.yml"
 
+# Jeton GITHUB_TOKEN en lecture seule : aucun job n'écrit dans le dépôt.
+permissions:
+  contents: read
+
 jobs:
   tests:
     uses: ./.github/workflows/ci-tests.yml
