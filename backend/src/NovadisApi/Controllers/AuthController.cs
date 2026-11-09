@@ -33,7 +33,8 @@ namespace NovadisApi.Controllers
         [EnableRateLimiting("AuthPolicy")]
         public async Task<ActionResult<ApiResponse<object>>> Login([FromBody] LoginRequestDto request, CancellationToken ct)
         {
-            var ip = request.IpAddress ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+            // IP toujours issue de la connexion : celle du corps de requête est falsifiable (journal d'audit).
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var enriched = new LoginRequestDto { Email = request.Email, IpAddress = ip, DeviceInfo = request.DeviceInfo };
 
             var result = await _authService.RequestLoginCodeAsync(enriched, ct);
@@ -51,7 +52,8 @@ namespace NovadisApi.Controllers
         [EnableRateLimiting("AuthPolicy")]
         public async Task<ActionResult<ApiResponse<AuthResponseDto>>> VerifyCode([FromBody] VerifyCodeRequestDto request, CancellationToken ct)
         {
-            var ip = request.IpAddress ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+            // IP toujours issue de la connexion : celle du corps de requête est falsifiable (journal d'audit).
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var enriched = new VerifyCodeRequestDto
             {
                 Email = request.Email, Code = request.Code, IpAddress = ip, DeviceInfo = request.DeviceInfo
@@ -69,7 +71,8 @@ namespace NovadisApi.Controllers
         [EnableRateLimiting("AuthPolicy")]
         public async Task<ActionResult<ApiResponse<AuthResponseDto>>> RefreshToken([FromBody] RefreshTokenRequestDto request, CancellationToken ct)
         {
-            var ip = request.IpAddress ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+            // IP toujours issue de la connexion : celle du corps de requête est falsifiable (journal d'audit).
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var enriched = new RefreshTokenRequestDto
             {
                 RefreshToken = request.RefreshToken, IpAddress = ip, DeviceInfo = request.DeviceInfo
@@ -113,7 +116,8 @@ namespace NovadisApi.Controllers
         [EnableRateLimiting("AuthPolicy")]
         public async Task<ActionResult<ApiResponse<AuthResponseDto>>> VerifyDevice([FromBody] VerifyDeviceRequestDto request, CancellationToken ct)
         {
-            var ip = request.IpAddress ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+            // IP toujours issue de la connexion : celle du corps de requête est falsifiable (journal d'audit).
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var enriched = new VerifyDeviceRequestDto
             {
                 Email = request.Email,

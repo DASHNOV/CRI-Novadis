@@ -75,7 +75,10 @@ namespace NovadisApi.Services.Storage
 
             var normalized = objectKey.Replace('\\', '/').TrimStart('/');
             var combined = Path.GetFullPath(Path.Combine(_rootPath, normalized));
-            var rootFull = Path.GetFullPath(_rootPath);
+            // Séparateur final obligatoire : sans lui, « export-storage-x/… » passerait
+            // le contrôle de préfixe d'« export-storage ».
+            var rootFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_rootPath))
+                + Path.DirectorySeparatorChar;
 
             if (!combined.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
             {

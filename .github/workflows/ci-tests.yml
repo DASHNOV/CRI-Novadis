@@ -14,6 +14,10 @@ on:
       - "frontend/**"
       - ".github/workflows/ci-tests.yml"
 
+# Jeton GITHUB_TOKEN en lecture seule : aucun job n'écrit dans le dépôt.
+permissions:
+  contents: read
+
 jobs:
   backend-tests:
     name: Backend (.NET) tests

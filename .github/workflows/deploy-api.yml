@@ -18,6 +18,10 @@ concurrency:
   group: deploy-api
   cancel-in-progress: false
 
+# Jeton GITHUB_TOKEN en lecture seule : aucun job n'écrit dans le dépôt.
+permissions:
+  contents: read
+
 env:
   IMAGE_NAME: cri-novadis-api
   REMOTE_DIR: /opt/cri-novadis
